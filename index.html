@@ -2038,17 +2038,12 @@
         <label class="inv-label">Item</label>
         <select class="inv-input" id="invItem">
           <option value="">— Select item —</option>
-          <option value="Basmati Rice">Basmati Rice</option>
-          <option value="Chicken">Chicken</option>
-          <option value="Beef">Beef</option>
-          <option value="Biryani Spice Mix">Biryani Spice Mix</option>
-          <option value="Pita Bread">Pita Bread</option>
-          <option value="Samosa Wrappers">Samosa Wrappers</option>
-          <option value="Cooking Oil">Cooking Oil</option>
+          <option value="Fries">Fries</option>
           <option value="Cups">Cups</option>
           <option value="Tissue">Tissue</option>
-          <option value="Vimto Bottles">Vimto Bottles</option>
-          <option value="Laban Yogurt">Laban Yogurt</option>
+          <option value="Cooking Oil">Cooking Oil</option>
+          <option value="Cheese Powder">Cheese Powder</option>
+          <option value="BBQ Powder">BBQ Powder</option>
           <option value="Other">Other</option>
         </select>
       </div>
@@ -2500,7 +2495,7 @@ async function deleteUserRow(idx) {
 
 // ─── GAS Backend URL ────────────────────────────────────────────
 // Replace with your deployed Google Apps Script Web App URL
-const GAS_URL = 'YOUR_GAS_WEB_APP_URL_HERE';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbysNsWmqmLt5Se_RAl0xvr-I_HrlliFNna8dPOMX53UKhwaE9RMBXd_Jm4hu0BOZCj-/exec';
 
 // ─── Client ID ──────────────────────────────────────────────────
 // Set this to a unique string per client deployment (e.g. 'store-manila').
@@ -2511,23 +2506,15 @@ const CLIENT_ID = '';
 // ─── Product Data (loaded dynamically from Product Records sheet) ──
 // Fallback products used when GAS_URL is not set or fetch fails.
 const FALLBACK_PRODUCTS = {
-  main: [
-    { id: 'm1', name: 'Chicken Biryani',                price: 100, emoji: '🍗' },
-    { id: 'm2', name: 'Beef Biryani',                   price: 100, emoji: '🥩' },
-    { id: 'm3', name: 'Shawarma Beef Rice',              price: 120, emoji: '🌯' },
-    { id: 'm4', name: 'Samosa Chicken 12pcs',            price: 180, emoji: '🥟' },
-    { id: 'm5', name: 'Whole Chicken w/ Biryani Rice',  price: 350, emoji: '🍗' },
-    { id: 'm6', name: 'Bilao Beef Biryani',             price: 400, emoji: '🍲' },
-    { id: 'm7', name: 'Shawarma Lahme Sandwich',        price: 175, emoji: '🥙' },
-  ],
-  add_ons: [
-    { id: 'a1', name: 'Boiled Egg',       price: 25,  emoji: '🥚' },
-    { id: 'a2', name: 'Hot Sauce',        price: 10,  emoji: '🌶️' },
-    { id: 'a3', name: 'White Sauce',      price: 10,  emoji: '🫙' },
+  fries: [
+    { id: 'f1', name: 'Combo (Kerito)', price: 35, emoji: '🍟' },
+    { id: 'f2', name: 'Small Fries',    price: 25, emoji: '🍟', hasFlavors: true },
+    { id: 'f3', name: 'Medium Fries',   price: 35, emoji: '🍟', hasFlavors: true },
+    { id: 'f4', name: 'Large Fries',    price: 45, emoji: '🍟', hasFlavors: true },
   ],
   drinks: [
-    { id: 'd1', name: 'Vimto 22oz',        price: 75, emoji: '🧃' },
-    { id: 'd2', name: 'Laban Yogurt Drink',price: 95, emoji: '🥛' },
+    { id: 'd1', name: 'Small Drink', price: 10, emoji: '🥤' },
+    { id: 'd2', name: 'Big Drink',   price: 20, emoji: '🥤' },
   ]
 };
 
@@ -2875,12 +2862,8 @@ async function confirmOrder() {
   // Send to GAS backend
   if (GAS_URL && GAS_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
     try {
-      await fetch(GAS_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderData)
-      });
+      const saveUrl = GAS_URL + '?action=saveOrder&data=' + encodeURIComponent(JSON.stringify(orderData));
+      await fetch(saveUrl);
     } catch (e) {
       console.warn('Backend save failed (check GAS_URL):', e);
     }
@@ -3120,12 +3103,8 @@ async function autoConfirmTransaction(txn) {
 
   if (GAS_URL && GAS_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
     try {
-      await fetch(GAS_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderData)
-      });
+      const saveUrl = GAS_URL + '?action=saveOrder&data=' + encodeURIComponent(JSON.stringify(orderData));
+      await fetch(saveUrl);
     } catch (e) {
       console.warn('Backend save failed:', e);
     }
