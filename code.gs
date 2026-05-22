@@ -41,13 +41,17 @@ function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
 
   try {
-    if (action === 'login')        return handleLogin(e);
-    if (action === 'inventory')    return handleGetInventory(e);
-    if (action === 'transactions') return handleGetTransactions(e);
-    if (action === 'getUsers')     return handleGetUsers(e);
-    if (action === 'createUser')   return handleCreateUser(e);
-    if (action === 'updateUser')   return handleUpdateUser(e);
-    if (action === 'deleteUser')   return handleDeleteUser(e);
+    if (action === 'login')            return handleLogin(e);
+    if (action === 'inventory')        return handleGetInventory(e);
+    if (action === 'transactions')     return handleGetTransactions(e);
+    if (action === 'getUsers')         return handleGetUsers(e);
+    if (action === 'createUser')       return handleCreateUser(e);
+    if (action === 'updateUser')       return handleUpdateUser(e);
+    if (action === 'deleteUser')       return handleDeleteUser(e);
+    if (action === 'saveOrder')        return handleSaveOrderGET(e);
+    if (action === 'addInventory')     return handleAddInventoryGET(e);
+    if (action === 'updateInventory')  return handleUpdateInventoryGET(e);
+    if (action === 'deleteInventory')  return handleDeleteInventoryGET(e);
 
     return jsonResponse({ status: 'ok', app: 'AJ Medina POS', time: new Date().toISOString() });
   } catch (err) {
@@ -297,6 +301,44 @@ function handleDeleteInventory(body) {
 
   sheet.deleteRow(sheetRow);
   return jsonResponse({ success: true });
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  GET-based write wrappers (POST 302 redirects drop the body in GAS)
+// ════════════════════════════════════════════════════════════════════
+function handleSaveOrderGET(e) {
+  var p = e.parameter;
+  var items = [];
+  try { items = JSON.parse(p.items || '[]'); } catch(ex) {}
+  return handleSaveOrder({
+    orderNum:  p.orderNum  || '',
+    total:     parseFloat(p.total)  || 0,
+    paid:      parseFloat(p.paid)   || 0,
+    change:    parseFloat(p.change) || 0,
+    timestamp: p.timestamp || '',
+    items:     items
+  });
+}
+
+function handleAddInventoryGET(e) {
+  return handleAddInventory(e.parameter);
+}
+
+function handleUpdateInventoryGET(e) {
+  var p = e.parameter;
+  return handleUpdateInventory({
+    rowIndex:   p.rowIndex,
+    item:       p.item,
+    unit:       p.unit,
+    beginQty:   p.beginQty,
+    withdrawal: p.withdrawal,
+    balance:    p.balance,
+    remarks:    p.remarks
+  });
+}
+
+function handleDeleteInventoryGET(e) {
+  return handleDeleteInventory({ rowIndex: e.parameter.rowIndex });
 }
 
 // ════════════════════════════════════════════════════════════════════
