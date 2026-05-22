@@ -353,19 +353,45 @@ function handleGetTransactions(e) {
     return jsonResponse({ success: true, transactions: [] });
   }
 
+  // Build a lookup of per-line details from the Order Items sheet
+  var itemsMap = {};
+  var itemsSheet = ss.getSheetByName(SHEET_NAME_ITEMS);
+  if (itemsSheet && itemsSheet.getLastRow() >= 2) {
+    var itemsData = itemsSheet.getDataRange().getValues();
+    for (var j = 1; j < itemsData.length; j++) {
+      var ir = itemsData[j];
+      var key = ir[0] !== undefined ? ir[0].toString() : '';
+      if (!key) continue;
+      if (!itemsMap[key]) itemsMap[key] = [];
+      itemsMap[key].push({
+        name:     ir[2] ? ir[2].toString() : '',
+        qty:      ir[3] !== undefined ? ir[3] : 1,
+        price:    ir[4] !== undefined ? parseFloat(ir[4]) || 0 : 0,
+        subtotal: ir[5] !== undefined ? parseFloat(ir[5]) || 0 : 0
+      });
+    }
+  }
+
   var data = sheet.getDataRange().getValues();
   var rows = [];
 
   for (var i = 1; i < data.length; i++) {
     var r = data[i];
     if (!r[0] && !r[2]) continue;
+    var orderKey = r[0] !== undefined ? r[0].toString() : '';
+    var details  = itemsMap[orderKey] || [];
+    var itemsStr = details.length > 0
+      ? details.map(function(d) { return d.name + '×' + d.qty; }).join(', ')
+      : (r[2] !== undefined && r[2] !== '' ? r[2] + ' item(s)' : '');
+
     rows.push({
-      orderNum: r[0] !== undefined ? r[0].toString() : '',
+      orderNum: orderKey,
       time:     r[1] ? r[1].toString() : '',
-      items:    r[2] !== undefined ? r[2] : 0,
+      items:    itemsStr,
       total:    r[4] !== undefined ? r[4] : 0,
       paid:     0,
-      change:   0
+      change:   0,
+      details:  details
     });
   }
 
