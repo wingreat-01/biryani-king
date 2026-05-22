@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.google.com)",
+      "WebFetch(domain:doc-14-30-sheets.googleusercontent.com)",
+      "Bash(curl -s \"https://docs.google.com/spreadsheets/d/e/2PACX-1vQUTTTF5zrUNip0PChrApZ1-P_Z88-dYgXLSBhO6Y4_tshndpC6JyQQ6SmRXl1D_IZc5oROY0_sa5P4/pub?output=csv&gid=1\" -L)",
+      "Bash(curl -s \"https://docs.google.com/spreadsheets/d/e/2PACX-1vQUTTTF5zrUNip0PChrApZ1-P_Z88-dYgXLSBhO6Y4_tshndpC6JyQQ6SmRXl1D_IZc5oROY0_sa5P4/pub?output=csv&gid=2\" -L)",
+      "Bash(curl -s \"https://docs.google.com/spreadsheets/d/e/2PACX-1vQUTTTF5zrUNip0PChrApZ1-P_Z88-dYgXLSBhO6Y4_tshndpC6JyQQ6SmRXl1D_IZc5oROY0_sa5P4/pub?output=csv&gid=3\" -L)"
+    ]
+  }
+}

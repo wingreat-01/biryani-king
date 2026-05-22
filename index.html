@@ -2502,6 +2502,10 @@ async function deleteUserRow(idx) {
 // Replace with your deployed Google Apps Script Web App URL
 const GAS_URL = 'YOUR_GAS_WEB_APP_URL_HERE';
 
+// ─── Google Sheet Published CSV URLs (for reading) ───────────────
+// Orders tab (gid=0) — read-only, no GAS needed
+const ORDERS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQUTTTF5zrUNip0PChrApZ1-P_Z88-dYgXLSBhO6Y4_tshndpC6JyQQ6SmRXl1D_IZc5oROY0_sa5P4/pub?gid=0&single=true&output=csv';
+
 // ─── Client ID ──────────────────────────────────────────────────
 // Set this to a unique string per client deployment (e.g. 'store-manila').
 // Leave empty ('') to show ALL active products from the Product Records sheet.
@@ -3129,8 +3133,11 @@ async function autoConfirmTransaction(txn) {
         timestamp: orderData.timestamp,
         items:     JSON.stringify(orderData.items)
       });
-      await fetch(GAS_URL + '?' + params.toString());
+      const res  = await fetch(GAS_URL + '?' + params.toString());
+      const json = await res.json();
+      if (!json.success) showToast('⚠️ Sheet save failed: ' + (json.error || 'unknown'));
     } catch (e) {
+      showToast('⚠️ Could not reach Google Sheet');
       console.warn('Backend save failed:', e);
     }
   }
@@ -3145,45 +3152,81 @@ async function autoConfirmTransaction(txn) {
 }
 
 // ─── Fetch transactions from the Google Sheet ────────────────────
-let sheetTransactions = [];   // rows fetched from the Transactions sheet
+let sheetTransactions = [];
 let isFetchingSheet = false;
 
-async function fetchSheetTransactions() {
-  if (!GAS_URL || GAS_URL === 'YOUR_GAS_WEB_APP_URL_HERE') return;
+// Minimal CSV parser (handles quoted fields)
+function parseCSV(text) {
+  return text.trim().split('\n').map(line => {
+    const fields = [];
+    let field = '', inQ = false;
+    for (const c of line) {
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { fields.push(field.trim()); field = ''; }
+      else { field += c; }
+    }
+    fields.push(field.trim());
+    return fields;
+  });
+}
 
-  // Show a loading state
+function syncOrderNumFromSheet(rows) {
+  if (!rows.length) return;
+  const maxNum = Math.max(...rows.map(t => Number(t.orderNum) || 0));
+  if (maxNum >= orderNum) {
+    orderNum = maxNum + 1;
+    document.getElementById('orderNum').textContent = `#${orderNum}`;
+  }
+}
+
+async function fetchSheetTransactions() {
   const list = document.getElementById('txnList');
   list.innerHTML = `<div class="txn-empty"><div class="txn-empty-icon">⏳</div>Loading from sheet…</div>`;
   isFetchingSheet = true;
 
   try {
-    const res  = await fetch(GAS_URL + '?action=transactions');
-    const json = await res.json();
-    if (json.success && Array.isArray(json.transactions)) {
-      // Convert sheet rows to the same shape used by the local `transactions` array.
-      // Sheet columns: orderNum, time, items, total, paid, change
-      sheetTransactions = json.transactions.map(r => ({
-        orderNum : r.orderNum,
-        time     : r.time,
-        items    : r.items,
-        total    : parseFloat(r.total)  || 0,
-        paid     : parseFloat(r.paid)   || 0,
-        change   : parseFloat(r.change) || 0,
-        details  : Array.isArray(r.details) ? r.details : [],
-        fromSheet: true
-      }));
-
-      // ── FIX: sync orderNum to avoid duplicate #1, #2, etc. across sessions ──
-      if (sheetTransactions.length > 0) {
-        const maxNum = Math.max(...sheetTransactions.map(t => Number(t.orderNum) || 0));
-        if (maxNum >= orderNum) {
-          orderNum = maxNum + 1;
-          document.getElementById('orderNum').textContent = `#${orderNum}`;
-        }
+    // ── Primary: GAS (returns full item details from Order Items sheet) ──
+    if (GAS_URL && GAS_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
+      const res  = await fetch(GAS_URL + '?action=transactions');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.transactions)) {
+        sheetTransactions = json.transactions.map(r => ({
+          orderNum : r.orderNum,
+          time     : r.time,
+          items    : r.items,
+          total    : parseFloat(r.total)  || 0,
+          paid     : parseFloat(r.paid)   || 0,
+          change   : parseFloat(r.change) || 0,
+          details  : Array.isArray(r.details) ? r.details : [],
+          fromSheet: true
+        }));
+        syncOrderNumFromSheet(sheetTransactions);
+        isFetchingSheet = false;
+        renderTransactionHistory();
+        return;
       }
     }
+
+    // ── Fallback: read directly from published Orders CSV ──
+    const res  = await fetch(ORDERS_CSV_URL);
+    const text = await res.text();
+    const rows = parseCSV(text).slice(1); // skip header row
+    sheetTransactions = rows
+      .filter(r => r[0] && r[0] !== '')
+      .map(r => ({
+        orderNum : r[0],
+        time     : r[1] || '',
+        items    : (r[2] || '0') + ' item(s)',
+        total    : parseFloat(r[4]) || 0,
+        paid     : 0,
+        change   : 0,
+        details  : [],
+        fromSheet: true
+      }))
+      .reverse();
+    syncOrderNumFromSheet(sheetTransactions);
   } catch (e) {
-    console.warn('Could not fetch transactions from sheet:', e);
+    console.warn('Could not fetch transactions:', e);
     sheetTransactions = [];
   }
 
