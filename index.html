@@ -1678,6 +1678,9 @@
         <input class="login-input" id="loginPassword" type="password" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key===&#39;Enter&#39;)doLogin()">
       </div>
       <div class="login-error" id="loginError">Invalid username or password.</div>
+      <div id="offlineHint" style="font-size:11px;color:var(--text3);text-align:center;font-family:'Courier Prime',monospace;display:none">
+        Offline mode — use <strong style="color:var(--accent)">admin / admin123</strong>
+      </div>
       <button class="login-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
     </div>
   </div>
@@ -2231,12 +2234,12 @@ async function doLogin() {
   btnEl.disabled = true;
   btnEl.textContent = 'Signing in…';
 
-  // Offline mode (no GAS URL) — allow only hardcoded admin
+  // Offline mode (no GAS URL)
   if (!GAS_URL || GAS_URL === 'YOUR_GAS_WEB_APP_URL_HERE') {
     if (username === 'admin' && password === 'admin123') {
       onLoginSuccess({ username: 'admin', role: 'admin' });
     } else {
-      errEl.textContent = 'Invalid username or password.';
+      errEl.textContent = 'Offline mode: use admin / admin123';
       errEl.classList.add('show');
     }
     btnEl.disabled = false;
@@ -2245,7 +2248,6 @@ async function doLogin() {
   }
 
   try {
-    // Use GET so the browser can read the response (GAS POST blocks CORS)
     const url = GAS_URL + '?action=login'
       + '&username=' + encodeURIComponent(username)
       + '&password=' + encodeURIComponent(password);
@@ -2258,8 +2260,14 @@ async function doLogin() {
       errEl.classList.add('show');
     }
   } catch (e) {
-    errEl.textContent = 'Could not connect. Check your GAS URL.';
-    errEl.classList.add('show');
+    // GAS unreachable — fall back to offline admin credentials
+    if (username === 'admin' && password === 'admin123') {
+      onLoginSuccess({ username: 'admin', role: 'admin' });
+      showToast('⚠️ GAS unreachable — offline mode');
+    } else {
+      errEl.textContent = 'Cannot reach server. Use admin / admin123 for offline access.';
+      errEl.classList.add('show');
+    }
   }
 
   btnEl.disabled = false;
@@ -2677,6 +2685,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('invBeginQty').addEventListener('input', recalcBalance);
   document.getElementById('invWithdrawal').addEventListener('input', recalcBalance);
+
+  // Show offline hint when GAS is not configured
+  if (!GAS_URL || GAS_URL === 'YOUR_GAS_WEB_APP_URL_HERE') {
+    document.getElementById('offlineHint').style.display = '';
+  }
 
   // Focus username on login screen
   document.getElementById('loginUsername').focus();
