@@ -41,13 +41,17 @@ function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
 
   try {
-    if (action === 'login')        return handleLogin(e);
-    if (action === 'inventory')    return handleGetInventory(e);
-    if (action === 'transactions') return handleGetTransactions(e);
-    if (action === 'getUsers')     return handleGetUsers(e);
-    if (action === 'createUser')   return handleCreateUser(e);
-    if (action === 'updateUser')   return handleUpdateUser(e);
-    if (action === 'deleteUser')   return handleDeleteUser(e);
+    if (action === 'login')            return handleLogin(e);
+    if (action === 'inventory')        return handleGetInventory(e);
+    if (action === 'transactions')     return handleGetTransactions(e);
+    if (action === 'getUsers')         return handleGetUsers(e);
+    if (action === 'createUser')       return handleCreateUser(e);
+    if (action === 'updateUser')       return handleUpdateUser(e);
+    if (action === 'deleteUser')       return handleDeleteUser(e);
+    if (action === 'saveOrder')        return handleSaveOrderGET(e);
+    if (action === 'addInventory')     return handleAddInventoryGET(e);
+    if (action === 'updateInventory')  return handleUpdateInventoryGET(e);
+    if (action === 'deleteInventory')  return handleDeleteInventoryGET(e);
 
     return jsonResponse({ status: 'ok', app: 'AJ Medina POS', time: new Date().toISOString() });
   } catch (err) {
@@ -300,6 +304,44 @@ function handleDeleteInventory(body) {
 }
 
 // ════════════════════════════════════════════════════════════════════
+//  GET-based write wrappers (POST 302 redirects drop the body in GAS)
+// ════════════════════════════════════════════════════════════════════
+function handleSaveOrderGET(e) {
+  var p = e.parameter;
+  var items = [];
+  try { items = JSON.parse(p.items || '[]'); } catch(ex) {}
+  return handleSaveOrder({
+    orderNum:  p.orderNum  || '',
+    total:     parseFloat(p.total)  || 0,
+    paid:      parseFloat(p.paid)   || 0,
+    change:    parseFloat(p.change) || 0,
+    timestamp: p.timestamp || '',
+    items:     items
+  });
+}
+
+function handleAddInventoryGET(e) {
+  return handleAddInventory(e.parameter);
+}
+
+function handleUpdateInventoryGET(e) {
+  var p = e.parameter;
+  return handleUpdateInventory({
+    rowIndex:   p.rowIndex,
+    item:       p.item,
+    unit:       p.unit,
+    beginQty:   p.beginQty,
+    withdrawal: p.withdrawal,
+    balance:    p.balance,
+    remarks:    p.remarks
+  });
+}
+
+function handleDeleteInventoryGET(e) {
+  return handleDeleteInventory({ rowIndex: e.parameter.rowIndex });
+}
+
+// ════════════════════════════════════════════════════════════════════
 //  TRANSACTIONS — Save order (POST, no action field)
 // ════════════════════════════════════════════════════════════════════
 function handleSaveOrder(body) {
@@ -353,19 +395,45 @@ function handleGetTransactions(e) {
     return jsonResponse({ success: true, transactions: [] });
   }
 
+  // Build a lookup of per-line details from the Order Items sheet
+  var itemsMap = {};
+  var itemsSheet = ss.getSheetByName(SHEET_NAME_ITEMS);
+  if (itemsSheet && itemsSheet.getLastRow() >= 2) {
+    var itemsData = itemsSheet.getDataRange().getValues();
+    for (var j = 1; j < itemsData.length; j++) {
+      var ir = itemsData[j];
+      var key = ir[0] !== undefined ? ir[0].toString() : '';
+      if (!key) continue;
+      if (!itemsMap[key]) itemsMap[key] = [];
+      itemsMap[key].push({
+        name:     ir[2] ? ir[2].toString() : '',
+        qty:      ir[3] !== undefined ? ir[3] : 1,
+        price:    ir[4] !== undefined ? parseFloat(ir[4]) || 0 : 0,
+        subtotal: ir[5] !== undefined ? parseFloat(ir[5]) || 0 : 0
+      });
+    }
+  }
+
   var data = sheet.getDataRange().getValues();
   var rows = [];
 
   for (var i = 1; i < data.length; i++) {
     var r = data[i];
     if (!r[0] && !r[2]) continue;
+    var orderKey = r[0] !== undefined ? r[0].toString() : '';
+    var details  = itemsMap[orderKey] || [];
+    var itemsStr = details.length > 0
+      ? details.map(function(d) { return d.name + '×' + d.qty; }).join(', ')
+      : (r[2] !== undefined && r[2] !== '' ? r[2] + ' item(s)' : '');
+
     rows.push({
-      orderNum: r[0] !== undefined ? r[0].toString() : '',
+      orderNum: orderKey,
       time:     r[1] ? r[1].toString() : '',
-      items:    r[2] !== undefined ? r[2] : 0,
+      items:    itemsStr,
       total:    r[4] !== undefined ? r[4] : 0,
       paid:     0,
-      change:   0
+      change:   0,
+      details:  details
     });
   }
 
