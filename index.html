@@ -109,10 +109,8 @@
     transition: background 0.3s, color 0.3s;
   }
 
-  /* ─── Mobile base overrides ─── */
-  @media (max-width: 768px) {
-    html, body { height: auto; overflow: auto; }
-  }
+  /* ─── Mobile base: body stays locked so fixed nav can own horizontal touch ─── */
+  /* Do NOT add overflow:auto on body — it steals touch events from the bottom nav */
 
   /* ─── Layout ─── */
   .app {
@@ -777,13 +775,16 @@
     .app {
       display: flex;
       flex-direction: column;
-      height: auto;
-      min-height: 100vh;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
     }
     .menu-panel {
-      overflow: visible;
-      flex-shrink: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      flex: 1;
       padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+      -webkit-overflow-scrolling: touch;
     }
     .products-area {
       overflow: visible;
@@ -795,11 +796,14 @@
       position: static;
       width: 100%;
       height: auto;
+      max-height: 60vh;
+      overflow-y: auto;
       transform: none !important;
       border-left: none;
       border-top: 2px solid var(--border);
       display: flex;
       padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+      -webkit-overflow-scrolling: touch;
     }
     .cart-items { overflow: visible; min-height: 60px; }
     .cart-bottom { overflow: visible; max-height: none; }
@@ -825,13 +829,14 @@
       transform: translateY(0);
       transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
       /* Horizontal scroll */
-      overflow-x: auto;
+      overflow-x: scroll;
       overflow-y: hidden;
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;          /* Firefox */
-      touch-action: pan-x;            /* tell browser: horizontal swipe is mine */
+      scrollbar-width: none;
+      touch-action: pan-x;
       overscroll-behavior-x: contain;
+      will-change: scroll-position;
     }
     .bottom-nav::-webkit-scrollbar { display: none; } /* Chrome/Safari */
     .bottom-nav.hidden { transform: translateY(110%); }
@@ -4121,7 +4126,6 @@ function isMobileDevice() {
 
 // ── Sync product category tabs into the mobile bottom nav ────────
 function syncBottomNavProducts() {
-  if (!isMobileDevice()) return;
   const nav = document.getElementById('bottomNav');
   if (!nav) return;
 
