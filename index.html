@@ -1,12 +1,57 @@
 <!DOCTYPE html>
-<!-- saved from url=(0044)file:///C:/Users/Lisa/Downloads/index_7.html -->
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Biryani King POS</title>
-<link href="./index_8_files/css2" rel="stylesheet">
+
+<!-- ── PWA Meta ───────────────────────────────────────────────── -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#c8863a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BK POS">
+<meta name="description" content="Biryani King Point of Sale System">
+
+<!-- Apple touch icons (generated via canvas — no external files needed) -->
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+<!-- ── Fonts ──────────────────────────────────────────────────── -->
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
 <style>
-  /* ─── CSS Variables ─── */
+  /* ─── PWA Install Button ─── */
+  #pwaInstallBtn {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent);
+    color: #111;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    transition: all 0.2s;
+  }
+  #pwaInstallBtn:hover { background: #d9954a; }
+
+  /* ─── Offline indicator ─── */
+  .offline-banner {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: #e05050;
+    color: #fff;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px;
+    z-index: 9999;
+  }
+  .offline-banner.show { display: block; }
   :root {
     --bg: #1a1208;
     --surface: #251a0a;
@@ -1690,12 +1735,18 @@
 <div class="app" id="app" style="display:none">
 
   <!-- Header -->
+  <!-- Offline Banner -->
+  <div class="offline-banner" id="offlineBanner">📡 You are offline — POS works locally, sync resumes when connected</div>
+
   <header>
     <div class="logo">
       <div class="logo-icon">BK</div>
       <span class="logo-text">BIRYANI <span>KING</span></span>
     </div>
     <div class="header-right">
+      <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
+        ⬇️ Install
+      </button>
       <span class="time-display" id="timeDisplay">12:11:50 AM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
@@ -3731,5 +3782,96 @@ async function deleteInvItem(idx) {
 }
 </script>
 
+<!-- ══════════════════════════════════════════════════════════════
+     PWA: Service Worker Registration + Icon Generator
+     ══════════════════════════════════════════════════════════════ -->
+<script>
+// ── Generate app icons on-the-fly (no external image files needed) ──
+(function generateIcons() {
+  function makeIcon(size) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#1a1208';
+    ctx.beginPath();
+    ctx.roundRect(0, 0, size, size, size * 0.18);
+    ctx.fill();
+    ctx.fillStyle = '#c8863a';
+    ctx.beginPath();
+    ctx.arc(size / 2, size * 0.42, size * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1a1208';
+    ctx.font = `bold ${size * 0.28}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('BK', size / 2, size * 0.42);
+    ctx.fillStyle = '#c8863a';
+    ctx.font = `bold ${size * 0.1}px sans-serif`;
+    ctx.fillText('POS', size / 2, size * 0.74);
+    return c.toDataURL('image/png');
+  }
+  window._bkIcons = { '192': makeIcon(192), '512': makeIcon(512) };
+  const link = document.querySelector('link[rel="apple-touch-icon"]');
+  if (link) link.href = window._bkIcons['192'];
+})();
 
-</body></html>
+// ── Register Service Worker ───────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        console.log('[PWA] SW registered, scope:', reg.scope);
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              showToast('🔄 Update available — reload to refresh');
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('[PWA] SW registration failed:', err));
+  });
+}
+
+// ── Install prompt (Add to Home Screen) ──────────────────────────
+let _deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  const btn = document.getElementById('pwaInstallBtn');
+  if (btn) btn.style.display = 'flex';
+});
+window.addEventListener('appinstalled', () => {
+  _deferredInstallPrompt = null;
+  const btn = document.getElementById('pwaInstallBtn');
+  if (btn) btn.style.display = 'none';
+  showToast('✅ App installed! Launch from your home screen.');
+});
+function triggerInstall() {
+  if (!_deferredInstallPrompt) return;
+  _deferredInstallPrompt.prompt();
+  _deferredInstallPrompt.userChoice.then(() => {
+    _deferredInstallPrompt = null;
+    const btn = document.getElementById('pwaInstallBtn');
+    if (btn) btn.style.display = 'none';
+  });
+}
+
+// ── Online / Offline detection ────────────────────────────────────
+function updateOnlineStatus() {
+  const banner = document.getElementById('offlineBanner');
+  if (!banner) return;
+  if (navigator.onLine) {
+    banner.classList.remove('show');
+  } else {
+    banner.classList.add('show');
+  }
+}
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+</script>
+
+</body>
+</html>
