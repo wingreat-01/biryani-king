@@ -830,6 +830,9 @@
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;          /* Firefox */
+      touch-action: pan-x;            /* allow horizontal swipe on Android PWA */
+      will-change: scroll-position;   /* hint to browser for smoother scroll */
+      overscroll-behavior-x: contain; /* prevent triggering page navigation */
     }
     .bottom-nav::-webkit-scrollbar { display: none; } /* Chrome/Safari */
     .bottom-nav.hidden { transform: translateY(110%); }
@@ -4043,9 +4046,19 @@ updateOnlineStatus();
 
 // ── Mobile Detection ─────────────────────────────────────────────
 function isMobileDevice() {
-  return window.innerWidth <= 1024 ||
+  // Treat any touch-capable device as mobile so the bottom nav always renders on PWA
+  const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  return hasTouch || window.innerWidth <= 1024 ||
     /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
 }
+
+// Re-sync bottom nav on orientation change / resize (PWA viewport can shift)
+window.addEventListener('resize', () => {
+  if (isMobileDevice()) {
+    syncBottomNavProducts();
+    syncBottomNavRoles();
+  }
+});
 
 // ── Sync product category tabs into the mobile bottom nav ────────
 function syncBottomNavProducts() {
