@@ -699,7 +699,7 @@
   .bottom-nav { display: none; }
 
   /* ─── Responsive: Mobile ─── */
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     .app {
       display: flex;
       flex-direction: column;
@@ -2796,7 +2796,7 @@ const FRIES_FLAVORS = ['Cheese', 'BBQ', 'Sour Cream'];
 function updatePaidInputMode() {
   const input = document.getElementById('paidInput');
   if (!input) return;
-  if (window.innerWidth <= 768) {
+  if (isMobileDevice()) {
     input.setAttribute('inputmode', 'none');
     input.setAttribute('readonly', 'readonly');
   } else {
@@ -3050,7 +3050,7 @@ function closeSuccess() {
   orderNum++;
   updateOrderNum();
   clearOrder();
-  if (window.innerWidth <= 768) toggleCart(false);
+  if (isMobileDevice()) toggleCart(false);
 }
 
 function updateOrderNum() {
@@ -3060,7 +3060,7 @@ function updateOrderNum() {
 // ─── Mobile Cart Toggle ───────────────────────────────────────────
 function toggleCart(forceState) {
   // On mobile the cart is always visible (vertical scroll layout), so no slide-over needed.
-  if (window.innerWidth <= 768) return;
+  if (isMobileDevice()) return;
   const panel = document.getElementById('cartPanel');
   const backdrop = document.getElementById('cartBackdrop');
   const isOpen = forceState !== undefined ? forceState : !panel.classList.contains('open');
@@ -3963,7 +3963,7 @@ let _bnavActive = 'main';
 
 // Called after login to show/hide admin buttons
 function syncBottomNavRoles() {
-  if (window.innerWidth > 768) return;
+  if (!isMobileDevice()) return;
   const isAdmin = currentUser && currentUser.role === 'admin';
   document.querySelectorAll('.bottom-nav-btn.admin-only').forEach(btn => {
     btn.style.display = isAdmin ? 'flex' : 'none';
@@ -3985,7 +3985,7 @@ function syncBottomNavActive(key) {
 // Hide/show the bottom nav based on cart state
 // Rules: hide when cart has items (user is in payment flow), show otherwise
 function updateBottomNav() {
-  if (window.innerWidth > 768) return; // desktop — do nothing
+  if (!isMobileDevice()) return; // desktop — do nothing
   const nav = document.getElementById('bottomNav');
   if (!nav) return;
   const hasItems = cart.length > 0;
