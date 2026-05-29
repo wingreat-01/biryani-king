@@ -830,9 +830,8 @@
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;          /* Firefox */
-      touch-action: pan-x;            /* allow horizontal swipe on Android PWA */
-      will-change: scroll-position;   /* hint to browser for smoother scroll */
-      overscroll-behavior-x: contain; /* prevent triggering page navigation */
+      touch-action: pan-x;            /* tell browser: horizontal swipe is mine */
+      overscroll-behavior-x: contain;
     }
     .bottom-nav::-webkit-scrollbar { display: none; } /* Chrome/Safari */
     .bottom-nav.hidden { transform: translateY(110%); }
@@ -4030,6 +4029,76 @@ function triggerInstall() {
   });
 }
 
+// ── Bottom Nav: JS-driven touch drag scroll ───────────────────────
+// Android PWA with a scrollable body intercepts horizontal swipes on
+// position:fixed children — CSS overflow-x alone never fires.
+// We capture touchstart/touchmove/touchend directly and call scrollLeft.
+(function initBnavDragScroll() {
+  let startX = 0, startScrollLeft = 0, isDragging = false, lastX = 0, velocity = 0, lastTime = 0;
+
+  function onTouchStart(e) {
+    const nav = document.getElementById('bottomNav');
+    if (!nav) return;
+    // Only activate if there are more buttons than fit on screen
+    if (nav.scrollWidth <= nav.clientWidth) return;
+    isDragging = true;
+    startX = e.touches[0].clientX;
+    lastX = startX;
+    startScrollLeft = nav.scrollLeft;
+    velocity = 0;
+    lastTime = Date.now();
+    nav.style.scrollBehavior = 'auto';
+  }
+
+  function onTouchMove(e) {
+    if (!isDragging) return;
+    const nav = document.getElementById('bottomNav');
+    if (!nav) return;
+    const x = e.touches[0].clientX;
+    const dx = startX - x;
+    const now = Date.now();
+    velocity = (lastX - x) / Math.max(1, now - lastTime);
+    lastX = x;
+    lastTime = now;
+    nav.scrollLeft = startScrollLeft + dx;
+    // Only prevent default if moving mostly horizontally to avoid blocking vertical page scroll
+    const dy = Math.abs(e.touches[0].clientY - (e.targetTouches[0] ? e.targetTouches[0].clientY : 0));
+    if (Math.abs(dx) > 4) e.preventDefault();
+  }
+
+  function onTouchEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    const nav = document.getElementById('bottomNav');
+    if (!nav) return;
+    nav.style.scrollBehavior = 'smooth';
+    // Momentum flick
+    if (Math.abs(velocity) > 0.2) {
+      nav.scrollLeft += velocity * 80;
+    }
+  }
+
+  // Attach after DOM ready; re-attach is safe since we use named handlers
+  function attachBnavTouch() {
+    const nav = document.getElementById('bottomNav');
+    if (!nav) return;
+    nav.removeEventListener('touchstart', onTouchStart);
+    nav.removeEventListener('touchmove', onTouchMove);
+    nav.removeEventListener('touchend', onTouchEnd);
+    nav.addEventListener('touchstart', onTouchStart, { passive: true });
+    nav.addEventListener('touchmove', onTouchMove, { passive: false }); // passive:false so preventDefault works
+    nav.addEventListener('touchend', onTouchEnd, { passive: true });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachBnavTouch);
+  } else {
+    attachBnavTouch();
+  }
+  // Re-attach after login injects new buttons
+  window._attachBnavTouch = attachBnavTouch;
+})();
+
 // ── Online / Offline detection ────────────────────────────────────
 function updateOnlineStatus() {
   const banner = document.getElementById('offlineBanner');
@@ -4046,19 +4115,9 @@ updateOnlineStatus();
 
 // ── Mobile Detection ─────────────────────────────────────────────
 function isMobileDevice() {
-  // Treat any touch-capable device as mobile so the bottom nav always renders on PWA
-  const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-  return hasTouch || window.innerWidth <= 1024 ||
+  return window.innerWidth <= 1024 ||
     /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
 }
-
-// Re-sync bottom nav on orientation change / resize (PWA viewport can shift)
-window.addEventListener('resize', () => {
-  if (isMobileDevice()) {
-    syncBottomNavProducts();
-    syncBottomNavRoles();
-  }
-});
 
 // ── Sync product category tabs into the mobile bottom nav ────────
 function syncBottomNavProducts() {
@@ -4093,6 +4152,8 @@ function syncBottomNavProducts() {
 
   // Scroll to the active tab so it's visible
   scrollBnavToActive();
+  // Re-attach touch drag handler now that new buttons exist
+  if (typeof window._attachBnavTouch === 'function') window._attachBnavTouch();
 }
 
 // Smoothly scroll the bottom nav so the active button is centered
