@@ -810,12 +810,12 @@
     .time-display { display: none !important; }
     .products-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
 
-    /* ── Bottom Nav ── */
+    /* ── Bottom Nav (scrollable tab strip) ── */
     .bottom-nav {
       display: flex;
       position: fixed;
       bottom: 0; left: 0; right: 0;
-      height: calc(60px + env(safe-area-inset-bottom, 0px));
+      height: calc(62px + env(safe-area-inset-bottom, 0px));
       padding-bottom: env(safe-area-inset-bottom, 0px);
       background: var(--surface);
       border-top: 1.5px solid var(--border);
@@ -824,11 +824,19 @@
       box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
       transform: translateY(0);
       transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+      /* Horizontal scroll */
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;          /* Firefox */
     }
+    .bottom-nav::-webkit-scrollbar { display: none; } /* Chrome/Safari */
     .bottom-nav.hidden { transform: translateY(110%); }
 
     .bottom-nav-btn {
-      flex: 1;
+      flex: 0 0 auto;               /* don't shrink — let them overflow & scroll */
+      min-width: 68px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -841,9 +849,10 @@
       font-family: 'Nunito', sans-serif;
       font-size: 10px;
       font-weight: 600;
-      padding: 6px 2px;
+      padding: 6px 10px;
       transition: color 0.18s;
       position: relative;
+      white-space: nowrap;
       -webkit-tap-highlight-color: transparent;
     }
     .bottom-nav-btn .bnav-icon {
@@ -859,10 +868,11 @@
       position: absolute;
       bottom: 5px; left: 50%;
       transform: translateX(-50%);
-      width: 20px; height: 3px;
+      width: 24px; height: 3px;
       background: var(--accent);
       border-radius: 2px;
     }
+    /* admin-only tabs start hidden; syncBottomNavRoles() reveals them */
     .bottom-nav-btn.admin-only { display: none; }
     .bnav-badge {
       position: absolute;
@@ -2151,18 +2161,15 @@
 
 <!-- ── Bottom Nav (mobile only) ── -->
 <nav class="bottom-nav" id="bottomNav">
-  <!-- Product tabs injected dynamically by syncBottomNav() -->
-  <button class="bottom-nav-btn active" id="bnav-main" onclick="bnavGo('main', this)">
-    <span class="bnav-icon">🍽️</span>
-    <span>Menu</span>
-  </button>
+  <!-- Product category tabs are injected here by syncBottomNavProducts() after login -->
+  <!-- Fixed utility tabs always present -->
   <button class="bottom-nav-btn" id="bnav-txn" onclick="bnavGo('txn', this)">
     <span class="bnav-icon">💵</span>
-    <span>Txns</span>
+    <span>Transactions</span>
   </button>
   <button class="bottom-nav-btn" id="bnav-inv" onclick="bnavGo('inv', this)">
     <span class="bnav-icon">📦</span>
-    <span>Stock</span>
+    <span>Inventory</span>
   </button>
   <button class="bottom-nav-btn admin-only" id="bnav-admin" onclick="bnavGo('admin', this)">
     <span class="bnav-icon">👤</span>
@@ -2170,7 +2177,7 @@
   </button>
   <button class="bottom-nav-btn admin-only" id="bnav-products" onclick="bnavGo('products', this)">
     <span class="bnav-icon">🛍️</span>
-    <span>Items</span>
+    <span>Products</span>
   </button>
 </nav>
 
@@ -2861,6 +2868,9 @@ function rebuildProductUI() {
 
     renderProducts(cat);
   });
+
+  // Mirror product categories into the mobile bottom nav slider
+  syncBottomNavProducts();
 }
 
 // FRIES_FLAVORS kept for backward compatibility (fallback products)
@@ -4031,6 +4041,59 @@ window.addEventListener('online',  updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 updateOnlineStatus();
 
+// ── Mobile Detection ─────────────────────────────────────────────
+function isMobileDevice() {
+  return window.innerWidth <= 1024 ||
+    /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+}
+
+// ── Sync product category tabs into the mobile bottom nav ────────
+function syncBottomNavProducts() {
+  if (!isMobileDevice()) return;
+  const nav = document.getElementById('bottomNav');
+  if (!nav) return;
+
+  // Remove any previously injected product buttons
+  nav.querySelectorAll('.bnav-product').forEach(b => b.remove());
+
+  // Re-inject one button per product category, in order, before the fixed tabs
+  const txnBtn = document.getElementById('bnav-txn');
+  const categories = Object.keys(PRODUCTS);
+
+  categories.forEach(function(cat, i) {
+    const label = cat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const emoji = PRODUCTS[cat][0] ? PRODUCTS[cat][0].emoji : '🍽️';
+
+    const btn = document.createElement('button');
+    btn.className = 'bottom-nav-btn bnav-product' + (i === 0 ? ' active' : '');
+    btn.id = 'bnav-cat-' + cat;
+    btn.setAttribute('data-cat', cat);
+    btn.innerHTML = `<span class="bnav-icon">${emoji}</span><span>${label}</span>`;
+    btn.onclick = function() {
+      const desktopTab = document.querySelector('.cat-tab.product-tab[data-cat="' + cat + '"]');
+      if (desktopTab) switchCategory(cat, desktopTab);
+      syncBottomNavActive('cat-' + cat);
+      scrollBnavToActive();
+    };
+    nav.insertBefore(btn, txnBtn);
+  });
+
+  // Scroll to the active tab so it's visible
+  scrollBnavToActive();
+}
+
+// Smoothly scroll the bottom nav so the active button is centered
+function scrollBnavToActive() {
+  const nav = document.getElementById('bottomNav');
+  if (!nav) return;
+  const active = nav.querySelector('.bottom-nav-btn.active');
+  if (!active) return;
+  const navW = nav.offsetWidth;
+  const btnLeft = active.offsetLeft;
+  const btnW = active.offsetWidth;
+  nav.scrollTo({ left: btnLeft - navW / 2 + btnW / 2, behavior: 'smooth' });
+}
+
 // ── Bottom Nav Logic ──────────────────────────────────────────────
 // Tracks which "section" the bottom nav thinks is active
 let _bnavActive = 'main';
@@ -4050,10 +4113,13 @@ function syncBottomNavActive(key) {
   document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
     btn.classList.remove('active');
   });
-  // Match by id pattern: bnav-{key} or bnav-main for product categories
+  // Match by id: bnav-{key} (covers cat-*, txn, inv, admin, products)
   const target = document.getElementById('bnav-' + key)
                || document.getElementById('bnav-main');
-  if (target) target.classList.add('active');
+  if (target) {
+    target.classList.add('active');
+    scrollBnavToActive();
+  }
 }
 
 // Hide/show the bottom nav based on cart state
@@ -4074,7 +4140,8 @@ function bnavGo(key, btn) {
     if (firstProductTab) {
       const cat = firstProductTab.getAttribute('data-cat');
       switchCategory(cat, firstProductTab);
-      syncBottomNavActive('main');
+      syncBottomNavActive('cat-' + cat);
+      scrollBnavToActive();
     }
   } else if (key === 'txn') {
     const tab = document.getElementById('txnTab');
