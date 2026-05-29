@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════════
 //  AJ Medina POS — Google Apps Script Backend (code.gs)
-//  Logs POS orders to a Google Sheet + User Authentication
+//  Logs POS orders to a Google Sheet
 // ══════════════════════════════════════════════════════════════════
 //
 //  SETUP GUIDE:
@@ -13,460 +13,136 @@
 //  5. Paste it into index.html where it says:
 //     const GAS_URL = 'YOUR_GAS_WEB_APP_URL_HERE';
 //
-//  FIRST-TIME SETUP:
-//  The admin account is auto-created on first run:
-//    Username: admin
-//    Password: admin123
-//  Change it immediately after first login via the Admin panel.
-//
 // ══════════════════════════════════════════════════════════════════
 
-// ── Sheet names ──────────────────────────────────────────────────
-var SHEET_NAME_ORDERS    = 'Orders';
-var SHEET_NAME_ITEMS     = 'Order Items';
-var SHEET_NAME_INVENTORY = 'Inventory';
-var SHEET_NAME_USERS     = 'Users';
+// ── Config ──────────────────────────────────────────────────────
+var SHEET_NAME_ORDERS  = 'Orders';
+var SHEET_NAME_ITEMS   = 'Order Items';
 
-// ── JSON helper ──────────────────────────────────────────────────
-function jsonResponse(data) {
+// ── Entry Points ─────────────────────────────────────────────────
+
+/**
+ * GET  → health check / simple ping
+ */
+function doGet(e) {
   return ContentService
-    .createTextOutput(JSON.stringify(data))
+    .createTextOutput(JSON.stringify({ status: 'ok', app: 'AJ Medina POS', time: new Date().toISOString() }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  GET handler — read actions + GET-based auth/user routes
-// ════════════════════════════════════════════════════════════════════
-function doGet(e) {
-  var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
-
-  try {
-    if (action === 'login')            return handleLogin(e);
-    if (action === 'inventory')        return handleGetInventory(e);
-    if (action === 'transactions')     return handleGetTransactions(e);
-    if (action === 'getUsers')         return handleGetUsers(e);
-    if (action === 'createUser')       return handleCreateUser(e);
-    if (action === 'updateUser')       return handleUpdateUser(e);
-    if (action === 'deleteUser')       return handleDeleteUser(e);
-    if (action === 'saveOrder')        return handleSaveOrderGET(e);
-    if (action === 'addInventory')     return handleAddInventoryGET(e);
-    if (action === 'updateInventory')  return handleUpdateInventoryGET(e);
-    if (action === 'deleteInventory')  return handleDeleteInventoryGET(e);
-
-    return jsonResponse({ status: 'ok', app: 'AJ Medina POS', time: new Date().toISOString() });
-  } catch (err) {
-    return jsonResponse({ success: false, error: err.message });
-  }
-}
-
-// ════════════════════════════════════════════════════════════════════
-//  POST handler — orders + inventory write actions
-// ════════════════════════════════════════════════════════════════════
+/**
+ * POST → receive order from POS frontend
+ */
 function doPost(e) {
   try {
-    var body   = JSON.parse(e.postData ? e.postData.contents : '{}');
-    var action = body.action || '';
-
-    // No action = legacy order save
-    if (!action)                        return handleSaveOrder(body);
-    if (action === 'addInventory')      return handleAddInventory(body);
-    if (action === 'updateInventory')   return handleUpdateInventory(body);
-    if (action === 'deleteInventory')   return handleDeleteInventory(body);
-
-    return jsonResponse({ success: false, error: 'Unknown POST action: ' + action });
+    var raw  = e.postData ? e.postData.contents : '{}';
+    var data = JSON.parse(raw);
+    saveOrder(data);
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: true, orderNum: data.orderNum }))
+      .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
-    return jsonResponse({ success: false, error: err.message });
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  AUTH — Login  (GET ?action=login&username=…&password=…)
-// ════════════════════════════════════════════════════════════════════
-function handleLogin(e) {
-  var username = ((e.parameter && e.parameter.username) || '').trim().toLowerCase();
-  var password = ((e.parameter && e.parameter.password) || '').trim();
+// ── Core Logic ───────────────────────────────────────────────────
 
-  if (!username || !password) {
-    return jsonResponse({ success: false, error: 'Username and password required.' });
-  }
-
-  var ss    = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = getOrCreateSheet(ss, SHEET_NAME_USERS,
-    ['Username', 'Password', 'Role', 'Created At', 'Last Login']);
-  var data  = sheet.getDataRange().getValues();
-
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    if ((row[0] || '').toString().trim().toLowerCase() === username &&
-        (row[1] || '').toString().trim() === password) {
-      // Update last login
-      sheet.getRange(i + 1, 5).setValue(new Date().toISOString());
-      return jsonResponse({
-        success:  true,
-        username: row[0].toString().trim(),
-        role:     (row[2] || 'user').toString().trim()
-      });
-    }
-  }
-
-  // Seed default admin on first run
-  if (data.length <= 1 && username === 'admin' && password === 'admin123') {
-    sheet.appendRow(['admin', 'admin123', 'admin', new Date().toISOString(), new Date().toISOString()]);
-    return jsonResponse({ success: true, username: 'admin', role: 'admin' });
-  }
-
-  return jsonResponse({ success: false, error: 'Invalid username or password.' });
-}
-
-// ════════════════════════════════════════════════════════════════════
-//  USERS CRUD  (all via GET URL params)
-// ════════════════════════════════════════════════════════════════════
-function handleGetUsers(e) {
-  var ss    = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = getOrCreateSheet(ss, SHEET_NAME_USERS,
-    ['Username', 'Password', 'Role', 'Created At', 'Last Login']);
-  var data  = sheet.getDataRange().getValues();
-  var users = [];
-
-  for (var i = 1; i < data.length; i++) {
-    var r = data[i];
-    if (!r[0]) continue;
-    users.push({
-      username:  r[0].toString(),
-      role:      r[2] ? r[2].toString() : 'user',
-      createdAt: r[3] ? r[3].toString() : '',
-      lastLogin: r[4] ? r[4].toString() : '',
-      rowIndex:  i - 1  // 0-based index for client
-    });
-  }
-
-  return jsonResponse({ success: true, users: users });
-}
-
-function handleCreateUser(e) {
-  var username = ((e.parameter && e.parameter.username) || '').trim();
-  var password = ((e.parameter && e.parameter.password) || '').trim();
-  var role     = ((e.parameter && e.parameter.role)     || 'user').trim();
-
-  if (!username || !password) {
-    return jsonResponse({ success: false, error: 'Username and password required.' });
-  }
-
-  var ss    = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = getOrCreateSheet(ss, SHEET_NAME_USERS,
-    ['Username', 'Password', 'Role', 'Created At', 'Last Login']);
-  var data  = sheet.getDataRange().getValues();
-
-  // Check for duplicate username
-  for (var i = 1; i < data.length; i++) {
-    if ((data[i][0] || '').toString().trim().toLowerCase() === username.toLowerCase()) {
-      return jsonResponse({ success: false, error: 'Username already exists.' });
-    }
-  }
-
-  sheet.appendRow([username, password, role, new Date().toISOString(), '']);
-  return jsonResponse({ success: true });
-}
-
-function handleUpdateUser(e) {
-  var rowIndex = parseInt((e.parameter && e.parameter.rowIndex) || '0');
-  var username = ((e.parameter && e.parameter.username) || '').trim();
-  var password = ((e.parameter && e.parameter.password) || '').trim();
-  var role     = ((e.parameter && e.parameter.role)     || 'user').trim();
-
-  var ss       = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet    = getOrCreateSheet(ss, SHEET_NAME_USERS,
-    ['Username', 'Password', 'Role', 'Created At', 'Last Login']);
-  var sheetRow = rowIndex + 2; // +1 header, +1 for 1-based
-
-  if (sheetRow > sheet.getLastRow()) {
-    return jsonResponse({ success: false, error: 'User row not found.' });
-  }
-
-  sheet.getRange(sheetRow, 1).setValue(username);
-  if (password) sheet.getRange(sheetRow, 2).setValue(password);
-  sheet.getRange(sheetRow, 3).setValue(role);
-
-  return jsonResponse({ success: true });
-}
-
-function handleDeleteUser(e) {
-  var rowIndex = parseInt((e.parameter && e.parameter.rowIndex) || '0');
-  var ss       = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet    = getOrCreateSheet(ss, SHEET_NAME_USERS,
-    ['Username', 'Password', 'Role', 'Created At', 'Last Login']);
-  var sheetRow = rowIndex + 2;
-
-  if (sheetRow > sheet.getLastRow()) {
-    return jsonResponse({ success: false, error: 'User row not found.' });
-  }
-
-  // Protect: never delete the last admin
-  var role = sheet.getRange(sheetRow, 3).getValue();
-  if (role === 'admin') {
-    var last       = sheet.getLastRow();
-    var adminCount = 0;
-    if (last >= 2) {
-      sheet.getRange(2, 3, last - 1, 1).getValues()
-           .forEach(function(r) { if (r[0] === 'admin') adminCount++; });
-    }
-    if (adminCount <= 1) {
-      return jsonResponse({ success: false, error: 'Cannot delete the last admin account.' });
-    }
-  }
-
-  sheet.deleteRow(sheetRow);
-  return jsonResponse({ success: true });
-}
-
-// ════════════════════════════════════════════════════════════════════
-//  INVENTORY
-// ════════════════════════════════════════════════════════════════════
-function handleGetInventory(e) {
-  var ss    = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = getOrCreateSheet(ss, SHEET_NAME_INVENTORY,
-    ['ITEM', 'UNIT-M', 'BEGINNING QTY', 'TOTAL WITHDRAWAL', 'AVAILABLE BALANCE', 'REMARKS']);
-  var data      = sheet.getDataRange().getValues();
-  var inventory = [];
-
-  for (var i = 1; i < data.length; i++) {
-    var r = data[i];
-    if (!r[0]) continue;
-    inventory.push({
-      item:       r[0].toString(),
-      unit:       r[1] ? r[1].toString() : '',
-      beginQty:   r[2] !== undefined ? r[2] : 0,
-      withdrawal: r[3] !== undefined ? r[3] : 0,
-      balance:    r[4] !== undefined ? r[4] : 0,
-      remarks:    r[5] ? r[5].toString() : '',
-      rowIndex:   i - 1  // 0-based
-    });
-  }
-
-  return jsonResponse({ success: true, inventory: inventory });
-}
-
-function handleAddInventory(body) {
-  var ss    = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = getOrCreateSheet(ss, SHEET_NAME_INVENTORY,
-    ['ITEM', 'UNIT-M', 'BEGINNING QTY', 'TOTAL WITHDRAWAL', 'AVAILABLE BALANCE', 'REMARKS']);
-
-  sheet.appendRow([
-    body.item       || '',
-    body.unit       || '',
-    parseFloat(body.beginQty)   || 0,
-    parseFloat(body.withdrawal) || 0,
-    parseFloat(body.balance)    || 0,
-    body.remarks    || ''
-  ]);
-  return jsonResponse({ success: true });
-}
-
-function handleUpdateInventory(body) {
-  var rowIndex = parseInt(body.rowIndex !== undefined ? body.rowIndex : -1);
-  if (rowIndex < 0) return jsonResponse({ success: false, error: 'rowIndex required.' });
-
-  var ss    = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = getOrCreateSheet(ss, SHEET_NAME_INVENTORY,
-    ['ITEM', 'UNIT-M', 'BEGINNING QTY', 'TOTAL WITHDRAWAL', 'AVAILABLE BALANCE', 'REMARKS']);
-  var sheetRow = rowIndex + 2;
-
-  if (sheetRow > sheet.getLastRow()) {
-    return jsonResponse({ success: false, error: 'Inventory row not found.' });
-  }
-
-  sheet.getRange(sheetRow, 1, 1, 6).setValues([[
-    body.item       || '',
-    body.unit       || '',
-    parseFloat(body.beginQty)   || 0,
-    parseFloat(body.withdrawal) || 0,
-    parseFloat(body.balance)    || 0,
-    body.remarks    || ''
-  ]]);
-  return jsonResponse({ success: true });
-}
-
-function handleDeleteInventory(body) {
-  var rowIndex = parseInt(body.rowIndex !== undefined ? body.rowIndex : -1);
-  if (rowIndex < 0) return jsonResponse({ success: false, error: 'rowIndex required.' });
-
-  var ss    = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = getOrCreateSheet(ss, SHEET_NAME_INVENTORY,
-    ['ITEM', 'UNIT-M', 'BEGINNING QTY', 'TOTAL WITHDRAWAL', 'AVAILABLE BALANCE', 'REMARKS']);
-  var sheetRow = rowIndex + 2;
-
-  if (sheetRow > sheet.getLastRow()) {
-    return jsonResponse({ success: false, error: 'Inventory row not found.' });
-  }
-
-  sheet.deleteRow(sheetRow);
-  return jsonResponse({ success: true });
-}
-
-// ════════════════════════════════════════════════════════════════════
-//  GET-based write wrappers (POST 302 redirects drop the body in GAS)
-// ════════════════════════════════════════════════════════════════════
-function handleSaveOrderGET(e) {
-  var p = e.parameter;
-  var items = [];
-  try { items = JSON.parse(p.items || '[]'); } catch(ex) {}
-  return handleSaveOrder({
-    orderNum:  p.orderNum  || '',
-    total:     parseFloat(p.total)  || 0,
-    paid:      parseFloat(p.paid)   || 0,
-    change:    parseFloat(p.change) || 0,
-    timestamp: p.timestamp || '',
-    items:     items
-  });
-}
-
-function handleAddInventoryGET(e) {
-  return handleAddInventory(e.parameter);
-}
-
-function handleUpdateInventoryGET(e) {
-  var p = e.parameter;
-  return handleUpdateInventory({
-    rowIndex:   p.rowIndex,
-    item:       p.item,
-    unit:       p.unit,
-    beginQty:   p.beginQty,
-    withdrawal: p.withdrawal,
-    balance:    p.balance,
-    remarks:    p.remarks
-  });
-}
-
-function handleDeleteInventoryGET(e) {
-  return handleDeleteInventory({ rowIndex: e.parameter.rowIndex });
-}
-
-// ════════════════════════════════════════════════════════════════════
-//  TRANSACTIONS — Save order (POST, no action field)
-// ════════════════════════════════════════════════════════════════════
-function handleSaveOrder(body) {
+/**
+ * Writes the order to both the Orders and Order Items sheets.
+ * Creates and formats sheets if they don't exist yet.
+ */
+function saveOrder(data) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
   // ── Orders sheet ──
-  var ordersSheet = getOrCreateSheet(ss, SHEET_NAME_ORDERS,
-    ['Order #', 'Date & Time', 'Line Items', 'Total Qty', 'Grand Total (₱)']);
+  var ordersSheet = getOrCreateSheet(ss, SHEET_NAME_ORDERS);
+  ensureOrdersHeader(ordersSheet);
 
-  ordersSheet.appendRow([
-    body.orderNum || '',
-    formatDateTime(body.timestamp),
-    body.items ? body.items.length : 0,
-    body.items ? body.items.reduce(function(s, i) { return s + i.qty; }, 0) : 0,
-    parseFloat(body.total) || 0
-  ]);
+  var orderRow = [
+    data.orderNum                             || '',          // A: Order #
+    formatDateTime(data.timestamp)            || '',          // B: Date/Time
+    data.items ? data.items.length : 0,                       // C: # of line items
+    data.items ? data.items.reduce(function(s, i){ return s + i.qty; }, 0) : 0, // D: total qty
+    data.total != null ? data.total : 0                       // E: Grand Total
+  ];
+  ordersSheet.appendRow(orderRow);
 
   // ── Order Items sheet ──
-  var itemsSheet = getOrCreateSheet(ss, SHEET_NAME_ITEMS,
-    ['Order #', 'Date & Time', 'Product', 'Qty', 'Unit Price (₱)', 'Subtotal (₱)']);
+  var itemsSheet = getOrCreateSheet(ss, SHEET_NAME_ITEMS);
+  ensureItemsHeader(itemsSheet);
 
-  if (Array.isArray(body.items) && body.items.length > 0) {
-    body.items.forEach(function(item) {
+  if (data.items && data.items.length > 0) {
+    data.items.forEach(function(item) {
       itemsSheet.appendRow([
-        body.orderNum || '',
-        formatDateTime(body.timestamp),
-        item.name     || '',
-        item.qty      || 0,
-        parseFloat(item.price)    || 0,
-        parseFloat(item.subtotal) || 0
+        data.orderNum     || '',     // A: Order #
+        formatDateTime(data.timestamp) || '',  // B: Date/Time
+        item.name         || '',     // C: Product
+        item.qty          || 0,      // D: Qty
+        item.price        || 0,      // E: Unit Price
+        item.subtotal     || 0       // F: Subtotal
       ]);
     });
   }
 
-  try {
-    ordersSheet.autoResizeColumns(1, 5);
-    itemsSheet.autoResizeColumns(1, 6);
-  } catch(e) { /* ignore */ }
-
-  return jsonResponse({ success: true, orderNum: body.orderNum });
+  // ── Auto-format the sheets (first time) ──
+  autoFormatSheets(ordersSheet, itemsSheet);
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  TRANSACTIONS — Fetch  (GET ?action=transactions)
-// ════════════════════════════════════════════════════════════════════
-function handleGetTransactions(e) {
-  var ss    = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(SHEET_NAME_ORDERS);
+// ── Sheet Helpers ─────────────────────────────────────────────────
 
-  if (!sheet || sheet.getLastRow() < 2) {
-    return jsonResponse({ success: true, transactions: [] });
-  }
-
-  // Build a lookup of per-line details from the Order Items sheet
-  var itemsMap = {};
-  var itemsSheet = ss.getSheetByName(SHEET_NAME_ITEMS);
-  if (itemsSheet && itemsSheet.getLastRow() >= 2) {
-    var itemsData = itemsSheet.getDataRange().getValues();
-    for (var j = 1; j < itemsData.length; j++) {
-      var ir = itemsData[j];
-      var key = ir[0] !== undefined ? ir[0].toString() : '';
-      if (!key) continue;
-      if (!itemsMap[key]) itemsMap[key] = [];
-      itemsMap[key].push({
-        name:     ir[2] ? ir[2].toString() : '',
-        qty:      ir[3] !== undefined ? ir[3] : 1,
-        price:    ir[4] !== undefined ? parseFloat(ir[4]) || 0 : 0,
-        subtotal: ir[5] !== undefined ? parseFloat(ir[5]) || 0 : 0
-      });
-    }
-  }
-
-  var data = sheet.getDataRange().getValues();
-  var rows = [];
-
-  for (var i = 1; i < data.length; i++) {
-    var r = data[i];
-    if (!r[0] && !r[2]) continue;
-    var orderKey = r[0] !== undefined ? r[0].toString() : '';
-    var details  = itemsMap[orderKey] || [];
-    var itemsStr = details.length > 0
-      ? details.map(function(d) { return d.name + '×' + d.qty; }).join(', ')
-      : (r[2] !== undefined && r[2] !== '' ? r[2] + ' item(s)' : '');
-
-    rows.push({
-      orderNum: orderKey,
-      time:     r[1] ? r[1].toString() : '',
-      items:    itemsStr,
-      total:    r[4] !== undefined ? r[4] : 0,
-      paid:     0,
-      change:   0,
-      details:  details
-    });
-  }
-
-  rows.reverse(); // newest first
-  return jsonResponse({ success: true, transactions: rows });
-}
-
-// ════════════════════════════════════════════════════════════════════
-//  UTILITY — get or create a sheet with headers
-// ════════════════════════════════════════════════════════════════════
-function getOrCreateSheet(ss, name, headers) {
+function getOrCreateSheet(ss, name) {
   var sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
-    sheet.appendRow(headers);
-    sheet.getRange(1, 1, 1, headers.length)
-         .setBackground('#1a1a2e')
-         .setFontColor('#f5c842')
-         .setFontWeight('bold')
-         .setFontSize(11)
-         .setHorizontalAlignment('center');
-    sheet.setFrozenRows(1);
   }
   return sheet;
 }
 
-// ════════════════════════════════════════════════════════════════════
-//  UTILITY — format date/time for the sheet
-// ════════════════════════════════════════════════════════════════════
+function ensureOrdersHeader(sheet) {
+  if (sheet.getLastRow() === 0) {
+    var header = ['Order #', 'Date & Time', 'Line Items', 'Total Qty', 'Grand Total (₱)'];
+    sheet.appendRow(header);
+    styleHeaderRow(sheet, header.length);
+  }
+}
+
+function ensureItemsHeader(sheet) {
+  if (sheet.getLastRow() === 0) {
+    var header = ['Order #', 'Date & Time', 'Product', 'Qty', 'Unit Price (₱)', 'Subtotal (₱)'];
+    sheet.appendRow(header);
+    styleHeaderRow(sheet, header.length);
+  }
+}
+
+function styleHeaderRow(sheet, numCols) {
+  var range = sheet.getRange(1, 1, 1, numCols);
+  range
+    .setBackground('#1a1a2e')
+    .setFontColor('#f5c842')
+    .setFontWeight('bold')
+    .setFontSize(11)
+    .setHorizontalAlignment('center');
+  sheet.setFrozenRows(1);
+}
+
+function autoFormatSheets(ordersSheet, itemsSheet) {
+  // Auto-resize columns
+  try {
+    ordersSheet.autoResizeColumns(1, 5);
+    itemsSheet.autoResizeColumns(1, 6);
+  } catch(e) { /* ignore */ }
+}
+
+// ── Date Formatting ───────────────────────────────────────────────
+
 function formatDateTime(isoString) {
   if (!isoString) return new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
   try {
-    return Utilities.formatDate(new Date(isoString), 'Asia/Manila', 'yyyy-MM-dd HH:mm:ss');
+    var d = new Date(isoString);
+    return Utilities.formatDate(d, 'Asia/Manila', 'yyyy-MM-dd HH:mm:ss');
   } catch(e) {
     return isoString;
   }
@@ -474,6 +150,7 @@ function formatDateTime(isoString) {
 
 // ══════════════════════════════════════════════════════════════════
 //  OPTIONAL: Daily Summary Email
+//  Uncomment and set up a time-driven trigger → onOpen()
 // ══════════════════════════════════════════════════════════════════
 
 /*
@@ -483,7 +160,7 @@ function sendDailySummary() {
   if (!sheet || sheet.getLastRow() < 2) return;
 
   var today = Utilities.formatDate(new Date(), 'Asia/Manila', 'yyyy-MM-dd');
-  var data  = sheet.getDataRange().getValues();
+  var data   = sheet.getDataRange().getValues();
   var todayOrders = data.slice(1).filter(function(row) {
     return String(row[1]).startsWith(today);
   });
@@ -491,15 +168,15 @@ function sendDailySummary() {
   var totalRevenue = todayOrders.reduce(function(s, r) { return s + (r[4] || 0); }, 0);
 
   var body = 'AJ Medina POS Daily Summary\n\n' +
-             'Date: '    + today + '\n' +
-             'Orders: '  + todayOrders.length + '\n' +
+             'Date: ' + today + '\n' +
+             'Orders: ' + todayOrders.length + '\n' +
              'Revenue: ₱' + totalRevenue.toFixed(2) + '\n\n' +
              'View full report: ' + ss.getUrl();
 
   MailApp.sendEmail({
-    to:      Session.getActiveUser().getEmail(),
+    to: Session.getActiveUser().getEmail(),
     subject: 'AJ Medina POS — Daily Summary ' + today,
-    body:    body
+    body: body
   });
 }
 */
