@@ -4036,8 +4036,8 @@ function triggerInstall() {
 // CSS overflow-x:scroll on position:fixed elements can be unreliable on
 // Android Chrome PWA. We manually track touch and set scrollLeft.
 (function initBnavDragScroll() {
-  let startX = 0, startY = 0, startScrollLeft = 0;
-  let isDragging = false, lastX = 0, velocity = 0, lastTime = 0;
+  let isDragging = false, startX = 0, startY = 0, startScrollLeft = 0,
+      lastX = 0, velocity = 0, lastTime = 0;
   let isHorizontal = null; // null = undecided, true = horizontal, false = vertical
 
   function onTouchStart(e) {
@@ -4136,6 +4136,7 @@ function isMobileDevice() {
 function syncBottomNavProducts() {
   const nav = document.getElementById('bottomNav');
   if (!nav) return;
+  if (!Object.keys(PRODUCTS).length) return; // products not loaded yet
 
   // Remove any previously injected product buttons
   nav.querySelectorAll('.bnav-product').forEach(b => b.remove());
@@ -4186,7 +4187,6 @@ let _bnavActive = 'main';
 
 // Called after login to show/hide admin buttons
 function syncBottomNavRoles() {
-  if (!isMobileDevice()) return;
   const isAdmin = currentUser && currentUser.role === 'admin';
   document.querySelectorAll('.bottom-nav-btn.admin-only').forEach(btn => {
     btn.style.display = isAdmin ? 'flex' : 'none';
