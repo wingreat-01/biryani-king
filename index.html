@@ -695,30 +695,27 @@
     z-index: 40;
   }
 
+  /* ─── Bottom Nav Bar (mobile only) ─── */
+  .bottom-nav { display: none; }
+
   /* ─── Responsive: Mobile ─── */
   @media (max-width: 768px) {
-    /* Single vertical scroll layout */
     .app {
       display: flex;
       flex-direction: column;
       height: auto;
       min-height: 100vh;
     }
-
-    /* Menu panel: natural height, no overflow clip */
     .menu-panel {
       overflow: visible;
       flex-shrink: 0;
+      padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
     }
-
-    /* Products area: scrolls naturally with the page */
     .products-area {
       overflow: visible;
       padding: 14px;
       flex: none;
     }
-
-    /* Cart panel: inline below products, full width, no slide-over */
     .cart-panel {
       grid-area: unset;
       position: static;
@@ -728,28 +725,85 @@
       border-left: none;
       border-top: 2px solid var(--border);
       display: flex;
-      padding-bottom: 24px;
+      padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     }
-
-    /* cart-items: natural height */
-    .cart-items {
-      overflow: visible;
-      min-height: 60px;
-    }
-
-    /* cart-bottom: no height clipping */
-    .cart-bottom {
-      overflow: visible;
-      max-height: none;
-    }
-
-    /* Hide backdrop and toggle button — no longer needed */
+    .cart-items { overflow: visible; min-height: 60px; }
+    .cart-bottom { overflow: visible; max-height: none; }
     .cart-backdrop { display: none !important; }
     .cart-toggle-btn { display: none !important; }
-
+    /* Hide top tab bar on mobile — replaced by bottom nav */
+    .category-tabs { display: none !important; }
     .time-display { display: none !important; }
     .products-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-    .category-tabs { padding: 12px 14px 0; }
+
+    /* ── Bottom Nav ── */
+    .bottom-nav {
+      display: flex;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: calc(60px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      background: var(--surface);
+      border-top: 1.5px solid var(--border);
+      z-index: 50;
+      align-items: stretch;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+      transform: translateY(0);
+      transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .bottom-nav.hidden { transform: translateY(110%); }
+
+    .bottom-nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text3);
+      font-family: 'Nunito', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 6px 2px;
+      transition: color 0.18s;
+      position: relative;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .bottom-nav-btn .bnav-icon {
+      font-size: 20px;
+      line-height: 1;
+      transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .bottom-nav-btn.active { color: var(--accent); }
+    .bottom-nav-btn.active .bnav-icon { transform: translateY(-2px) scale(1.15); }
+    .bottom-nav-btn:active .bnav-icon { transform: scale(0.9); }
+    .bottom-nav-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: 5px; left: 50%;
+      transform: translateX(-50%);
+      width: 20px; height: 3px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+    .bottom-nav-btn.admin-only { display: none; }
+    .bnav-badge {
+      position: absolute;
+      top: 4px; right: calc(50% - 18px);
+      background: var(--accent2);
+      color: #fff;
+      border-radius: 10px;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 1px 5px;
+      min-width: 16px;
+      text-align: center;
+      display: none;
+    }
+    .bnav-badge.show { display: block; }
   }
 
   @media (min-width: 900px) {
@@ -2021,6 +2075,31 @@
 <!-- Cart Backdrop -->
 <div class="cart-backdrop" id="cartBackdrop" onclick="toggleCart()"></div>
 
+<!-- ── Bottom Nav (mobile only) ── -->
+<nav class="bottom-nav" id="bottomNav">
+  <!-- Product tabs injected dynamically by syncBottomNav() -->
+  <button class="bottom-nav-btn active" id="bnav-main" onclick="bnavGo('main', this)">
+    <span class="bnav-icon">🍽️</span>
+    <span>Menu</span>
+  </button>
+  <button class="bottom-nav-btn" id="bnav-txn" onclick="bnavGo('txn', this)">
+    <span class="bnav-icon">💵</span>
+    <span>Txns</span>
+  </button>
+  <button class="bottom-nav-btn" id="bnav-inv" onclick="bnavGo('inv', this)">
+    <span class="bnav-icon">📦</span>
+    <span>Stock</span>
+  </button>
+  <button class="bottom-nav-btn admin-only" id="bnav-admin" onclick="bnavGo('admin', this)">
+    <span class="bnav-icon">👤</span>
+    <span>Admin</span>
+  </button>
+  <button class="bottom-nav-btn admin-only" id="bnav-products" onclick="bnavGo('products', this)">
+    <span class="bnav-icon">🛍️</span>
+    <span>Items</span>
+  </button>
+</nav>
+
 <!-- Checkout Modal -->
 <div class="modal-overlay" id="checkoutModal">
   <div class="modal">
@@ -2351,6 +2430,9 @@ function onLoginSuccess(user) {
 
   // Load products from the sheet
   fetchProducts();
+
+  // Sync bottom nav role visibility
+  syncBottomNavRoles();
 }
 
 function doLogout() {
@@ -2894,6 +2976,9 @@ function updateCart() {
 
   // Keep register in sync whenever cart changes
   refreshRegister();
+
+  // Show/hide bottom nav based on cart state
+  updateBottomNav();
 }
 
 function updateCardState(productId, forceState) {
@@ -3871,6 +3956,70 @@ function updateOnlineStatus() {
 window.addEventListener('online',  updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 updateOnlineStatus();
+
+// ── Bottom Nav Logic ──────────────────────────────────────────────
+// Tracks which "section" the bottom nav thinks is active
+let _bnavActive = 'main';
+
+// Called after login to show/hide admin buttons
+function syncBottomNavRoles() {
+  if (window.innerWidth > 768) return;
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  document.querySelectorAll('.bottom-nav-btn.admin-only').forEach(btn => {
+    btn.style.display = isAdmin ? 'flex' : 'none';
+  });
+}
+
+// Update the bottom nav active state to match a given key
+function syncBottomNavActive(key) {
+  _bnavActive = key;
+  document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  // Match by id pattern: bnav-{key} or bnav-main for product categories
+  const target = document.getElementById('bnav-' + key)
+               || document.getElementById('bnav-main');
+  if (target) target.classList.add('active');
+}
+
+// Hide/show the bottom nav based on cart state
+// Rules: hide when cart has items (user is in payment flow), show otherwise
+function updateBottomNav() {
+  if (window.innerWidth > 768) return; // desktop — do nothing
+  const nav = document.getElementById('bottomNav');
+  if (!nav) return;
+  const hasItems = cart.length > 0;
+  nav.classList.toggle('hidden', hasItems);
+}
+
+// Navigation handler for bottom nav buttons
+function bnavGo(key, btn) {
+  if (key === 'main') {
+    // Switch to the first product category tab
+    const firstProductTab = document.querySelector('.cat-tab.product-tab');
+    if (firstProductTab) {
+      const cat = firstProductTab.getAttribute('data-cat');
+      switchCategory(cat, firstProductTab);
+      syncBottomNavActive('main');
+    }
+  } else if (key === 'txn') {
+    const tab = document.getElementById('txnTab');
+    if (tab) switchToTransactions(tab);
+    syncBottomNavActive('txn');
+  } else if (key === 'inv') {
+    const tab = document.getElementById('invTab');
+    if (tab) switchToInventory(tab);
+    syncBottomNavActive('inv');
+  } else if (key === 'admin') {
+    const tab = document.getElementById('adminTab');
+    if (tab) switchToAdmin(tab);
+    syncBottomNavActive('admin');
+  } else if (key === 'products') {
+    const tab = document.getElementById('productsTab');
+    if (tab) switchToProducts(tab);
+    syncBottomNavActive('products');
+  }
+}
 </script>
 
 </body>
