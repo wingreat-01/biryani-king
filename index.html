@@ -833,7 +833,7 @@
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
-      touch-action: pan-x;
+      touch-action: none;
       overscroll-behavior-x: contain;
       will-change: scroll-position;
     }
@@ -4090,8 +4090,10 @@ function triggerInstall() {
     nav.scrollLeft = startScrollLeft - dx;
   }
 
-  function onTouchEnd() {
+  function onTouchEnd(e) {
     if (!isDragging) return;
+    const wasTap = Math.abs(e.changedTouches[0].clientX - startX) < 8 &&
+                   Math.abs(e.changedTouches[0].clientY - startY) < 8;
     isDragging = false;
     isHorizontal = null;
     const nav = document.getElementById('bottomNav');
@@ -4099,6 +4101,16 @@ function triggerInstall() {
     nav.style.scrollBehavior = 'smooth';
     if (Math.abs(velocity) > 0.1) {
       nav.scrollLeft += velocity * 100;
+    }
+    // touch-action:none suppresses browser click synthesis — fire it manually on tap
+    if (wasTap) {
+      const target = document.elementFromPoint(
+        e.changedTouches[0].clientX, e.changedTouches[0].clientY
+      );
+      if (target) {
+        const btn = target.closest('.bottom-nav-btn');
+        if (btn) btn.click();
+      }
     }
   }
 
@@ -4172,8 +4184,8 @@ function syncBottomNavProducts() {
     nav.insertBefore(btn, txnBtn);
   });
 
-  // Scroll to the active tab so it's visible
-  scrollBnavToActive();
+  // Scroll to the active tab so it's visible (rAF so buttons have layout)
+  requestAnimationFrame(function() { scrollBnavToActive(); });
   // Re-attach touch drag handler now that new buttons exist
   if (typeof window._attachBnavTouch === 'function') window._attachBnavTouch();
 }
@@ -4223,8 +4235,8 @@ function updateBottomNav() {
   if (!isMobileDevice()) return; // desktop — do nothing
   const nav = document.getElementById('bottomNav');
   if (!nav) return;
-  const hasItems = cart.length > 0;
-  nav.classList.toggle('hidden', hasItems);
+  // Always keep nav visible — cashier needs to navigate categories while building an order
+  nav.classList.remove('hidden');
 }
 
 // Navigation handler for bottom nav buttons
