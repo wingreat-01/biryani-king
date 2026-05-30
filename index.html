@@ -4021,6 +4021,8 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => {
         console.log('[PWA] SW registered, scope:', reg.scope);
+        // Force-check for a new SW version on every page load
+        reg.update();
         reg.addEventListener('updatefound', () => {
           const nw = reg.installing;
           nw.addEventListener('statechange', () => {
