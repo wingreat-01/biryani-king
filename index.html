@@ -772,20 +772,25 @@
     /* Toast */
     .toast { font-size: 15px !important; padding: 12px 24px !important; }
 
+    html, body { overflow: auto; height: auto; }
+    /* Mobile: header fixed, entire content area scrolls as one column */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
     .app {
       display: flex;
       flex-direction: column;
-      height: 100vh;
-      height: 100dvh;
-      overflow: hidden;
-    }
-    .menu-panel {
+      min-height: 100dvh;
       overflow-y: auto;
       overflow-x: hidden;
-      flex: 1;
-      min-height: 0;
-      padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
       -webkit-overflow-scrolling: touch;
+      padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    }
+    .menu-panel {
+      overflow: visible;
+      flex: none;
     }
     .products-area {
       overflow: visible;
@@ -797,15 +802,15 @@
       position: static;
       width: 100%;
       height: auto;
+      overflow: visible;
       transform: none !important;
       border-left: none;
       border-top: 2px solid var(--border);
       display: flex;
       flex-shrink: 0;
-      padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     }
     .cart-items { overflow: visible; min-height: 60px; }
-    .cart-bottom { overflow: visible; max-height: none; }
+    .cart-bottom { overflow: visible; max-height: none; padding-bottom: 8px; }
     .cart-backdrop { display: none !important; }
     .cart-toggle-btn { display: none !important; }
     /* Hide top tab bar on mobile — replaced by bottom nav */
@@ -841,8 +846,9 @@
     .bottom-nav.hidden { transform: translateY(110%); }
 
     .bottom-nav-btn {
-      flex: 0 0 auto;               /* don't shrink — let them overflow & scroll */
-      min-width: 68px;
+      flex: 0 0 25vw;               /* exactly 4 visible at a time, rest slide */
+      min-width: 0;
+      max-width: 25vw;
       display: flex;
       flex-direction: column;
       align-items: center;
