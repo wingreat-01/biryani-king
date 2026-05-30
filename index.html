@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0053)file:///C:/Users/WAREHOUSE-PC/Downloads/index_42.html -->
+<!-- saved from url=(0053)file:///C:/Users/WAREHOUSE-PC/Downloads/index_44.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1897,7 +1897,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">03:43:54 PM</span>
+      <span class="time-display" id="timeDisplay">04:36:00 PM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
@@ -2779,7 +2779,7 @@ let allProductsData = [];
 
 // ─── State ──────────────────────────────────────────────────────
 let cart = [];     // [{ product, qty }]
-let orderNum = 1;
+let orderNum = parseInt(localStorage.getItem('bkpos_orderNum'), 10) || 1;
 // theme: 'dark' | 'light' | 'black'
 let currentTheme = 'dark';
 
@@ -3169,9 +3169,8 @@ async function confirmOrder() {
 function closeSuccess() {
   document.getElementById('successModal').classList.remove('open');
   orderNum++;
+  localStorage.setItem('bkpos_orderNum', orderNum);
   updateOrderNum();
-  clearOrder();
-  if (isMobileDevice()) toggleCart(false);
 }
 
 function updateOrderNum() {
@@ -3416,6 +3415,7 @@ async function autoConfirmTransaction(txn) {
   }
 
   orderNum++;
+  localStorage.setItem('bkpos_orderNum', orderNum);
   updateOrderNum();
   clearOrder();
 
@@ -3448,6 +3448,7 @@ function syncOrderNumFromSheet(rows) {
   const maxNum = Math.max(...rows.map(t => Number(t.orderNum) || 0));
   if (maxNum >= orderNum) {
     orderNum = maxNum + 1;
+    localStorage.setItem('bkpos_orderNum', orderNum);
     document.getElementById('orderNum').textContent = `#${orderNum}`;
   }
 }
