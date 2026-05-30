@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0053)file:///C:/Users/WAREHOUSE-PC/Downloads/index_44.html -->
+<!-- saved from url=(0053)file:///C:/Users/WAREHOUSE-PC/Downloads/index_46.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1897,7 +1897,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">04:36:00 PM</span>
+      <span class="time-display" id="timeDisplay">05:52:41 PM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
@@ -3232,7 +3232,8 @@ function switchToTransactions(tab) {
 
 function switchCategory(category, tab) {
   // Hide txn panel and inv panel and admin panel and products panel, show products area
-  document.querySelector('.products-area').style.display = '';
+  const productsArea = document.querySelector('.products-area');
+  productsArea.style.display = '';
   document.getElementById('panel-txn').classList.remove('active');
   document.getElementById('panel-inv').classList.remove('active');
   document.getElementById('panel-admin').classList.remove('active');
@@ -3243,6 +3244,9 @@ function switchCategory(category, tab) {
   tab.classList.add('active');
   const panel = document.getElementById('panel-' + category);
   if (panel) panel.classList.add('active');
+
+  // Scroll the products area back to the top so the first cards are visible
+  productsArea.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function refreshRegister() {
