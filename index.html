@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_178.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_180.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -2127,7 +2127,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">03:01:07 PM</span>
+      <span class="time-display" id="timeDisplay">03:30:03 PM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
@@ -4354,14 +4354,14 @@ function isInStandaloneMode() {
 
 // ── Show install banner (Android/Chrome) ─────────────────────────
 function showInstallBanner() {
-  if (localStorage.getItem('bkpos_install_dismissed')) return;
+  if (sessionStorage.getItem('bkpos_install_dismissed')) return;
   const banner = document.getElementById('installBanner');
   if (banner) banner.classList.add('show');
 }
 function dismissInstallBanner() {
   const banner = document.getElementById('installBanner');
   if (banner) banner.classList.remove('show');
-  localStorage.setItem('bkpos_install_dismissed', '1');
+  sessionStorage.setItem('bkpos_install_dismissed', '1');
 }
 
 // ── iOS modal ────────────────────────────────────────────────────
@@ -4373,7 +4373,7 @@ function closeIosModal(e) {
   if (e && e.target !== document.getElementById('iosInstallModal') && !e.target.classList.contains('ios-install-close')) return;
   const modal = document.getElementById('iosInstallModal');
   if (modal) modal.classList.remove('show');
-  localStorage.setItem('bkpos_install_dismissed', '1');
+  sessionStorage.setItem('bkpos_install_dismissed', '1');
 }
 
 // ── Android/Chrome: capture prompt ───────────────────────────────
@@ -4411,12 +4411,19 @@ function triggerInstall() {
 // ── On load: decide what to show ────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   if (isInStandaloneMode()) return; // already installed
-  if (localStorage.getItem('bkpos_install_dismissed')) return;
+  if (sessionStorage.getItem('bkpos_install_dismissed')) return;
   if (isIosSafari()) {
-    // Delay slightly so page paint finishes first
     setTimeout(showIosModal, 1200);
+  } else {
+    // Fallback: if beforeinstallprompt already fired before our listener
+    // attached (can happen on page reload), show banner after short delay
+    // if _deferredInstallPrompt was captured
+    setTimeout(() => {
+      if (_deferredInstallPrompt && !isInStandaloneMode()) {
+        showInstallBanner();
+      }
+    }, 800);
   }
-  // Android banner shown when beforeinstallprompt fires (above)
 });
 
 // ── Bottom Nav: JS-driven touch drag scroll ───────────────────────
