@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_177.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_190.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7,7 +7,7 @@
 <meta name="app-version" content="3.35">
 
 <!-- ── PWA Meta ───────────────────────────────────────────────── -->
-<link rel="manifest" href="./manifest.json">
+<link rel="manifest" href="file:///C:/Users/WAREHOUSE-PC/Downloads/manifest.json">
 <meta name="theme-color" content="#c8863a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2131,7 +2131,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">02:55:57 PM</span>
+      <span class="time-display" id="timeDisplay">05:53:49 PM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
@@ -3300,6 +3300,7 @@ function clearOrder() {
   document.querySelectorAll('.product-card').forEach(c => c.classList.remove('in-cart'));
   updateCart();
   showToast('🗑 Order cleared');
+  if (window.innerWidth <= 1024) toggleCart(false);
 }
 
 function updateCart() {
@@ -3424,6 +3425,8 @@ function closeSuccess() {
   orderNum++;
   localStorage.setItem('bkpos_orderNum', orderNum);
   updateOrderNum();
+  clearOrder();
+  document.body.style.overflow = '';
 }
 
 function updateOrderNum() {
@@ -3599,12 +3602,20 @@ function updateChangeDisplay(total, paid) {
   document.getElementById('processBtn').disabled = !(cart.length > 0 && paid >= total && total > 0);
 }
 
+function _scrollToProcessBtn() {
+  const btn = document.getElementById('processBtn');
+  if (!btn) return;
+  // Small delay lets the mobile layout settle before scrolling
+  setTimeout(() => btn.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 300);
+}
+
 function numpadPress(digit) {
   const input = document.getElementById('paidInput');
   const cur = input.value.replace(/\D/g, '');
   if (cur === '0' || cur === '') input.value = digit;
   else if (cur.length < 8) input.value = cur + digit;
   handlePaidInput(input.value);
+  _scrollToProcessBtn();
 }
 
 function numpadDel() {
@@ -3612,12 +3623,14 @@ function numpadDel() {
   const cur = input.value.replace(/\D/g, '');
   input.value = cur.length <= 1 ? '' : cur.slice(0, -1);
   handlePaidInput(input.value);
+  _scrollToProcessBtn();
 }
 
 function numpadClear() {
   const input = document.getElementById('paidInput');
   input.value = '';
   handlePaidInput('');
+  _scrollToProcessBtn();
 }
 
 function setQuick(amount) {
