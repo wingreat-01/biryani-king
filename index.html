@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_190.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_191.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -2131,7 +2131,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">05:53:49 PM</span>
+      <span class="time-display" id="timeDisplay">06:01:06 PM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
@@ -2380,6 +2380,9 @@
         <input type="text" id="paidInput" placeholder="0" oninput="handlePaidInput(this.value)" onkeydown="handlePaidKeydown(event)" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
         <span class="paid-cursor"></span>
       </div>
+
+      <!-- Dynamic quick-amount buttons (rendered by renderQuickAmounts) -->
+      <div class="quick-amounts sidebar-quick" id="quickAmounts"><span style="font-size:12px;color:var(--text3);font-family:&#39;Courier Prime&#39;,monospace;letter-spacing:0.05em;text-transform:uppercase;padding:2px 0;">Add items to see quick pay</span></div>
 
       <!-- Numpad -->
       <div class="numpad sidebar-numpad">
@@ -3300,7 +3303,6 @@ function clearOrder() {
   document.querySelectorAll('.product-card').forEach(c => c.classList.remove('in-cart'));
   updateCart();
   showToast('🗑 Order cleared');
-  if (window.innerWidth <= 1024) toggleCart(false);
 }
 
 function updateCart() {
@@ -3425,8 +3427,6 @@ function closeSuccess() {
   orderNum++;
   localStorage.setItem('bkpos_orderNum', orderNum);
   updateOrderNum();
-  clearOrder();
-  document.body.style.overflow = '';
 }
 
 function updateOrderNum() {
@@ -3550,6 +3550,7 @@ function refreshRegister() {
   const regPaid = document.getElementById('regPaidDisplay');
   if (regPaid) regPaid.textContent = `₱${paid.toLocaleString('en-PH', {minimumFractionDigits:2})}`;
   updateChangeDisplay(total, paid);
+  renderQuickAmounts(total);
 }
 
 function renderPaid() {
@@ -3602,20 +3603,12 @@ function updateChangeDisplay(total, paid) {
   document.getElementById('processBtn').disabled = !(cart.length > 0 && paid >= total && total > 0);
 }
 
-function _scrollToProcessBtn() {
-  const btn = document.getElementById('processBtn');
-  if (!btn) return;
-  // Small delay lets the mobile layout settle before scrolling
-  setTimeout(() => btn.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 300);
-}
-
 function numpadPress(digit) {
   const input = document.getElementById('paidInput');
   const cur = input.value.replace(/\D/g, '');
   if (cur === '0' || cur === '') input.value = digit;
   else if (cur.length < 8) input.value = cur + digit;
   handlePaidInput(input.value);
-  _scrollToProcessBtn();
 }
 
 function numpadDel() {
@@ -3623,14 +3616,12 @@ function numpadDel() {
   const cur = input.value.replace(/\D/g, '');
   input.value = cur.length <= 1 ? '' : cur.slice(0, -1);
   handlePaidInput(input.value);
-  _scrollToProcessBtn();
 }
 
 function numpadClear() {
   const input = document.getElementById('paidInput');
   input.value = '';
   handlePaidInput('');
-  _scrollToProcessBtn();
 }
 
 function setQuick(amount) {
@@ -3642,6 +3633,70 @@ function setExact() {
   const total = cart.reduce((s, i) => s + i.product.price * i.qty, 0);
   paidRaw = String(Math.ceil(total));
   renderPaid();
+}
+
+// ─── Dynamic Quick-Amount Buttons ────────────────────────────────
+function renderQuickAmounts(total) {
+  const el = document.getElementById('quickAmounts');
+  if (!el) return;
+  el.innerHTML = '';
+
+  const ceil = Math.ceil(total);
+
+  if (ceil <= 0) {
+    el.innerHTML = '<span style="font-size:12px;color:var(--text3);font-family:\'Courier Prime\',monospace;letter-spacing:0.05em;text-transform:uppercase;padding:2px 0;">Add items to see quick pay</span>';
+    return;
+  }
+
+  function roundUpTo(n, step) {
+    return Math.ceil(n / step) * step;
+  }
+
+  const candidates = [];
+
+  // 1. Exact total
+  candidates.push({ amount: ceil, label: `₱${ceil.toLocaleString('en-PH')}`, isExact: true });
+
+  // 2. Next ₱50 boundary
+  const next50 = roundUpTo(ceil + 1, 50);
+  if (next50 !== ceil) candidates.push({ amount: next50, label: `₱${next50.toLocaleString('en-PH')}` });
+
+  // 3. Next ₱100 boundary
+  const next100 = roundUpTo(ceil + 1, 100);
+  if (next100 !== next50) candidates.push({ amount: next100, label: `₱${next100.toLocaleString('en-PH')}` });
+
+  // 4. One higher note (₱500 / ₱1000 / ₱2000) if meaningfully above total
+  const notes = [500, 1000, 2000];
+  for (const note of notes) {
+    if (note > ceil + 100) {
+      candidates.push({ amount: note, label: `₱${note.toLocaleString('en-PH')}` });
+      break;
+    }
+  }
+  // Always include ₱1000 for larger orders
+  if (ceil > 500 && !candidates.find(c => c.amount === 1000)) {
+    candidates.push({ amount: 1000, label: '₱1,000' });
+  }
+
+  // Deduplicate & limit to 4 buttons
+  const seen = new Set();
+  const final = [];
+  for (const c of candidates) {
+    if (!seen.has(c.amount)) {
+      seen.add(c.amount);
+      final.push(c);
+      if (final.length === 4) break;
+    }
+  }
+
+  final.forEach(({ amount, label, isExact }) => {
+    const btn = document.createElement('button');
+    btn.className = 'quick-btn' + (isExact ? ' exact' : '');
+    btn.textContent = isExact ? `Exact ${label}` : label;
+    btn.onmousedown = (e) => e.preventDefault();
+    btn.onclick = () => setQuick(amount);
+    el.appendChild(btn);
+  });
 }
 
 function processTransaction() {
