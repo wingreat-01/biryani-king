@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_174.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_176.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -776,11 +776,13 @@
     .toast { font-size: 15px !important; padding: 12px 24px !important; }
 
     html, body { overflow: auto; height: auto; }
-    /* Mobile: header sits below the fixed top nav */
+    /* Mobile: header fixed at very top, nav tabs sit below it */
     header {
-      position: sticky;
-      top: calc(62px + env(safe-area-inset-top, 0px));
-      z-index: 40;
+      position: fixed;
+      top: env(safe-area-inset-top, 0px);
+      left: 0; right: 0;
+      height: 56px;
+      z-index: 55;
     }
     .app {
       display: flex;
@@ -886,7 +888,7 @@
     .products-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
 
     /* Bottom padding so content isn't hidden behind fixed bars */
-    .app { padding-top: calc(62px + env(safe-area-inset-top, 0px)); padding-bottom: 80px; }
+    .app { padding-top: calc(118px + env(safe-area-inset-top, 0px)); padding-bottom: 80px; }
 
     /* ── Mobile bottom "View Cart" bar ── */
     .mobile-cart-bar {
@@ -961,9 +963,9 @@
     .bottom-nav {
       display: flex;
       position: fixed;
-      top: 0; left: 0; right: 0;
-      height: calc(62px + env(safe-area-inset-top, 0px));
-      padding-top: env(safe-area-inset-top, 0px);
+      top: calc(56px + env(safe-area-inset-top, 0px)); left: 0; right: 0;
+      height: 62px;
+      padding-top: 0;
       background: var(--surface);
       border-bottom: 1.5px solid var(--border);
       z-index: 50;
@@ -977,7 +979,7 @@
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
-      touch-action: none;
+      touch-action: pan-x;
       overscroll-behavior-x: contain;
       will-change: scroll-position;
     }
@@ -2036,7 +2038,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">01:38:44 PM</span>
+      <span class="time-display" id="timeDisplay">02:46:27 PM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
