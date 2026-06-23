@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_186.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_187.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -2127,7 +2127,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">05:20:43 PM</span>
+      <span class="time-display" id="timeDisplay">05:27:53 PM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
@@ -4401,7 +4401,6 @@ function triggerInstall() {
       _deferredInstallPrompt = null;
       // Mark prompt as used — Chrome won't fire it again, hide banner forever
       localStorage.setItem('bkpos_prompt_used', '1');
-      window._pwaLog && window._pwaLog('User choice: ' + choice.outcome, '#0ff');
     });
   } else if (isIosSafari()) {
     showIosModal();
@@ -4484,7 +4483,6 @@ window.addEventListener('beforeinstallprompt', e => {
   const btn = document.querySelector('.install-banner-btn');
   if (btn) btn.textContent = '⬇ Install App';
   showInstallBanner();
-  window._pwaLog && window._pwaLog('✅ beforeinstallprompt FIRED! Native install ready.', '#0f0');
 });
 
 // ── Bottom Nav: JS-driven touch drag scroll ───────────────────────
@@ -4763,55 +4761,4 @@ function bnavGo(key, btn) {
 </div>
 
 
-<!-- ── PWA Debug Panel (remove after fixing) ── -->
-<div id="pwaDebug" style="position: fixed; bottom: 80px; left: 0px; right: 0px; z-index: 99999; background: rgb(0, 0, 0); color: rgb(0, 255, 0); font-family: monospace; font-size: 11px; padding: 8px 12px; max-height: 120px; overflow-y: auto; border-top: 1px solid rgb(0, 255, 0); display: block;"><div style="color: rgb(255, 255, 0);">09:20:39 Page loaded. Waiting for beforeinstallprompt...</div></div>
-<script>
-(function(){
-  const panel = document.getElementById('pwaDebug');
-  function log(msg, color) {
-    panel.style.display = 'block';
-    const line = document.createElement('div');
-    line.style.color = color || '#0f0';
-    line.textContent = new Date().toISOString().substr(11,8) + ' ' + msg;
-    panel.appendChild(line);
-    panel.scrollTop = panel.scrollHeight;
-    console.log('[PWADebug]', msg);
-  }
-  window._pwaLog = log;
-
-  log('Page loaded. Waiting for beforeinstallprompt...', '#ff0');
-
-  window.addEventListener('beforeinstallprompt', e => {
-    log('✅ beforeinstallprompt FIRED! Native install ready.', '#0f0');
-    // Update banner button text
-    const btn = document.querySelector('.install-banner-btn');
-    if (btn) btn.textContent = '⬇ Install App';
-  });
-
-  window.addEventListener('appinstalled', () => {
-    log('🎉 App installed successfully!', '#0ff');
-  });
-
-  // Check standalone mode
-  if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
-    log('ℹ Running in standalone/PWA mode already', '#08f');
-  }
-
-  // Check SW
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistration().then(reg => {
-      if (reg) log('✅ SW registered: ' + reg.scope, '#0f0');
-      else log('⚠ No SW registered yet', '#f80');
-    });
-  } else {
-    log('❌ Service Worker NOT supported', '#f00');
-  }
-
-  // Tap panel 3x to hide it
-  let taps = 0;
-  panel.addEventListener('click', () => {
-    if (++taps >= 3) { panel.style.display = 'none'; taps = 0; }
-  });
-})();
-</script>
 </body></html>
