@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0053)file:///C:/Users/WAREHOUSE-PC/Downloads/index_48.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_173.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -693,6 +693,9 @@
     z-index: 40;
   }
 
+  /* ─── Mobile View Cart bar (hidden on desktop, shown in media query) ─── */
+  .mobile-cart-bar { display: none; }
+
   /* ─── Bottom Nav Bar (mobile only) ─── */
   .bottom-nav { display: none; }
 
@@ -797,26 +800,162 @@
       padding: 14px;
       flex: none;
     }
+    /* ── Cart panel: full-screen slide-up sheet ── */
     .cart-panel {
       grid-area: unset;
-      position: static;
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
       width: 100%;
-      height: auto;
-      overflow: visible;
-      transform: none !important;
+      height: 95dvh;
+      max-height: 95dvh;
       border-left: none;
-      border-top: 2px solid var(--border);
+      border-top: none;
+      border-radius: 16px 16px 0 0;
+      z-index: 50;
+      transform: translateY(100%);
+      transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
       display: flex;
-      flex-shrink: 0;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 -8px 48px rgba(0,0,0,0.55);
+      padding-bottom: env(safe-area-inset-bottom);
     }
-    .cart-items { overflow: visible; min-height: 60px; }
-    .cart-bottom { overflow: visible; max-height: none; padding-bottom: 8px; }
-    .cart-backdrop { display: none !important; }
+    .cart-panel.open {
+      transform: translateY(0);
+    }
+
+    /* ── Mobile close bar at the top of the sheet ── */
+    .cart-mobile-close-bar {
+      display: none;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .cart-panel.open .cart-mobile-close-bar {
+      display: flex;
+    }
+    .cart-mobile-close-bar .close-bar-title {
+      font-family: 'Courier Prime', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+    .cart-mobile-close-bar .close-bar-btn {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--text2);
+      cursor: pointer;
+      font-size: 20px;
+      font-family: 'Nunito', sans-serif;
+      line-height: 1;
+      padding: 5px 14px;
+      min-width: 40px;
+      min-height: 36px;
+    }
+
+    /* Hide regular cart-header on mobile (close bar replaces it) */
+    .cart-panel.open .cart-header {
+      display: none;
+    }
+
+    /* Cart items fills remaining space */
+    .cart-items {
+      overflow-y: auto;
+      min-height: 60px;
+      max-height: none;
+      flex: 1;
+    }
+
+    /* Cart bottom natural height */
+    .cart-bottom { overflow-y: auto; max-height: none; flex-shrink: 0; padding-bottom: 8px; }
+
+    /* Backdrop becomes visible when cart is open */
+    .cart-backdrop { display: block; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+    .cart-backdrop.open { opacity: 1; pointer-events: all; }
+
     .cart-toggle-btn { display: none !important; }
     /* Hide top tab bar on mobile — replaced by bottom nav */
     .category-tabs { display: none !important; }
     .time-display { display: none !important; }
     .products-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+
+    /* Bottom padding so content isn't hidden behind fixed bars */
+    .app { padding-bottom: 80px; }
+
+    /* ── Mobile bottom "View Cart" bar ── */
+    .mobile-cart-bar {
+      display: flex;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 45;
+      align-items: center;
+      background: var(--surface);
+      border-top: 2px solid var(--accent);
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
+      padding: 10px 14px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    }
+    .mobile-cart-bar-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .mobile-cart-bar-count {
+      font-size: 13px;
+      color: var(--text2);
+      font-family: 'Courier Prime', monospace;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .mobile-cart-bar-total {
+      font-family: 'Courier Prime', monospace;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .mobile-cart-bar-btn {
+      background: var(--accent);
+      color: #111;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Nunito', sans-serif;
+      letter-spacing: 0.02em;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mobile-cart-bar-btn:active { transform: scale(0.97); }
+    .mobile-cart-bar-btn.empty {
+      background: var(--surface2);
+      color: var(--text3);
+      border: 1.5px solid var(--border);
+    }
+    .mobile-cart-bar-badge {
+      background: #111;
+      color: var(--accent);
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .mobile-cart-bar-btn.empty .mobile-cart-bar-badge {
+      background: var(--surface3);
+      color: var(--text3);
+    }
 
     /* ── Bottom Nav (scrollable tab strip) ── */
     .bottom-nav {
@@ -1897,7 +2036,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">06:14:49 PM</span>
+      <span class="time-display" id="timeDisplay">08:34:21 AM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
@@ -2089,6 +2228,11 @@
 
   <!-- Cart Panel -->
   <aside class="cart-panel" id="cartPanel">
+    <!-- Mobile close bar — visible when cart sheet is open -->
+    <div class="cart-mobile-close-bar" id="cartMobileCloseBar">
+      <span class="close-bar-title">🛒 Order</span>
+      <button class="close-bar-btn" onclick="toggleCart()" aria-label="Close cart">✕ Close</button>
+    </div>
     <div class="cart-header">
       <h2>Order</h2>
       <span class="order-num" id="orderNum">#1</span>
@@ -2166,6 +2310,17 @@
     </div><!-- end sidebar-register -->
     </div><!-- end cart-bottom -->
   </aside>
+</div>
+
+<!-- Mobile Bottom Cart Bar (fixed, always visible on mobile) -->
+<div class="mobile-cart-bar" id="mobileCartBar">
+  <div class="mobile-cart-bar-info">
+    <span class="mobile-cart-bar-count" id="mobileCartCount">0 items</span>
+    <span class="mobile-cart-bar-total" id="mobileCartTotal">₱0.00</span>
+  </div>
+  <button class="mobile-cart-bar-btn empty" id="mobileCartBtn" onclick="toggleCart()">
+    🛒 View Cart <span class="mobile-cart-bar-badge" id="mobileCartBadge">0</span>
+  </button>
 </div>
 
 <!-- Cart Backdrop -->
@@ -3100,6 +3255,9 @@ function updateCart() {
 
   // Show/hide bottom nav based on cart state
   updateBottomNav();
+
+  // Keep mobile bottom bar in sync
+  updateMobileBar();
 }
 
 function updateCardState(productId, forceState) {
@@ -3177,15 +3335,43 @@ function updateOrderNum() {
   document.getElementById('orderNum').textContent = `#${orderNum}`;
 }
 
-// ─── Mobile Cart Toggle ───────────────────────────────────────────
+// ─── Mobile Cart Toggle (slide-up sheet on mobile, sidebar on desktop) ───────
 function toggleCart(forceState) {
-  // On mobile the cart is always visible (vertical scroll layout), so no slide-over needed.
-  if (isMobileDevice()) return;
-  const panel = document.getElementById('cartPanel');
+  const panel    = document.getElementById('cartPanel');
   const backdrop = document.getElementById('cartBackdrop');
+  const isMobile = window.innerWidth <= 1024;
+
+  if (isMobile) {
+    const isOpen = forceState !== undefined ? forceState : !panel.classList.contains('open');
+    panel.classList.toggle('open', isOpen);
+    backdrop.classList.toggle('open', isOpen);
+    // Prevent body scroll while sheet is open
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+    return;
+  }
+
+  // Desktop: original slide-over behaviour
   const isOpen = forceState !== undefined ? forceState : !panel.classList.contains('open');
   panel.classList.toggle('open', isOpen);
   backdrop.classList.toggle('open', isOpen);
+}
+
+// ─── Keep mobile bottom bar in sync with cart state ───────────────────────
+function updateMobileBar() {
+  const countEl = document.getElementById('mobileCartCount');
+  const totalEl = document.getElementById('mobileCartTotal');
+  const btn     = document.getElementById('mobileCartBtn');
+  if (!countEl) return;
+  const total = cart.reduce((s, i) => s + i.product.price * i.qty, 0);
+  const count = cart.reduce((s, i) => s + i.qty, 0);
+  countEl.textContent = count === 1 ? '1 item' : `${count} items`;
+  totalEl.textContent = `₱${total.toFixed(2)}`;
+  if (btn) {
+    btn.classList.toggle('empty', count === 0);
+    btn.innerHTML = count === 0
+      ? `🛒 View Cart <span class="mobile-cart-bar-badge" id="mobileCartBadge">0</span>`
+      : `🛒 View Cart <span class="mobile-cart-bar-badge" id="mobileCartBadge">${count}</span>`;
+  }
 }
 
 // ─── Theme ───────────────────────────────────────────────────────
