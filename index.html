@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_182.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_183.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -2127,7 +2127,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">04:42:39 PM</span>
+      <span class="time-display" id="timeDisplay">04:47:33 PM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
@@ -4392,16 +4392,86 @@ window.addEventListener('appinstalled', () => {
 
 function triggerInstall() {
   if (_deferredInstallPrompt) {
-    // Android/Chrome native prompt
+    // Native prompt available — trigger it directly
     dismissInstallBanner();
     _deferredInstallPrompt.prompt();
     _deferredInstallPrompt.userChoice.then(() => {
       _deferredInstallPrompt = null;
     });
   } else if (isIosSafari()) {
-    // iOS Safari — show manual instructions
     showIosModal();
+  } else {
+    // beforeinstallprompt hasn't fired yet — wait up to 4s for it,
+    // then fall back to manual Chrome instructions
+    dismissInstallBanner();
+    const waitMs = 4000;
+    const started = Date.now();
+    function tryPrompt() {
+      if (_deferredInstallPrompt) {
+        _deferredInstallPrompt.prompt();
+        _deferredInstallPrompt.userChoice.then(() => { _deferredInstallPrompt = null; });
+      } else if (Date.now() - started < waitMs) {
+        setTimeout(tryPrompt, 200);
+      } else {
+        // Fallback: show manual install steps toast/modal
+        showManualInstallGuide();
+      }
+    }
+    setTimeout(tryPrompt, 200);
   }
+}
+
+function showManualInstallGuide() {
+  // Reuse the iOS modal structure but with Chrome instructions
+  const existing = document.getElementById('chromeInstallModal');
+  if (existing) { existing.classList.add('show'); return; }
+
+  const modal = document.createElement('div');
+  modal.id = 'chromeInstallModal';
+  modal.style.cssText = `
+    position:fixed;inset:0;z-index:9999;
+    background:rgba(0,0,0,0.7);
+    display:flex;align-items:flex-end;justify-content:center;
+  `;
+  modal.innerHTML = `
+    <div style="
+      background:#1e1206;border-radius:20px 20px 0 0;
+      border-top:2px solid #c8863a;padding:24px 20px 36px;
+      width:100%;max-width:480px;font-family:'Nunito',sans-serif;
+    ">
+      <div style="font-size:17px;font-weight:800;color:#c8863a;margin-bottom:6px;">
+        Install Biryani King POS
+      </div>
+      <div style="font-size:13px;color:#a08060;margin-bottom:20px;">
+        Follow these steps in Chrome:
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:24px;">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="min-width:28px;height:28px;border-radius:50%;background:#c8863a;color:#111;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;">1</div>
+          <div style="color:#d4b896;font-size:14px;padding-top:4px;">Tap the <strong style="color:#fff;">⋮ menu</strong> (three dots) in the top-right corner of Chrome</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="min-width:28px;height:28px;border-radius:50%;background:#c8863a;color:#111;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;">2</div>
+          <div style="color:#d4b896;font-size:14px;padding-top:4px;">Tap <strong style="color:#fff;">"Add to Home screen"</strong> or <strong style="color:#fff;">"Install app"</strong></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="min-width:28px;height:28px;border-radius:50%;background:#c8863a;color:#111;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;">3</div>
+          <div style="color:#d4b896;font-size:14px;padding-top:4px;">Tap <strong style="color:#fff;">"Install"</strong> — done! 🎉</div>
+        </div>
+      </div>
+      <button onclick="document.getElementById('chromeInstallModal').classList.remove('show')"
+        style="width:100%;padding:14px;border-radius:12px;border:none;
+        background:#c8863a;color:#111;font-size:15px;font-weight:800;
+        font-family:'Nunito',sans-serif;cursor:pointer;">
+        Got it
+      </button>
+    </div>
+  `;
+  modal.addEventListener('click', e => {
+    if (e.target === modal) modal.classList.remove('show');
+  });
+  document.body.appendChild(modal);
+  modal.classList.add('show');
 }
 
 // ── On load: decide what to show ────────────────────────────────
