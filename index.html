@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_180.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_181.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7,7 +7,7 @@
 <meta name="app-version" content="3.35">
 
 <!-- ── PWA Meta ───────────────────────────────────────────────── -->
-<link rel="manifest" href="file:///C:/Users/Lisa/Downloads/manifest.json">
+<link rel="manifest" href="file:///C:/Users/WAREHOUSE-PC/Downloads/manifest.json">
 <meta name="theme-color" content="#c8863a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2127,7 +2127,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">03:30:03 PM</span>
+      <span class="time-display" id="timeDisplay">03:46:42 PM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
@@ -4351,6 +4351,10 @@ function isInStandaloneMode() {
   return navigator.standalone === true ||
          window.matchMedia('(display-mode: standalone)').matches;
 }
+function isChromeLike() {
+  const ua = navigator.userAgent;
+  return /chrome|chromium|crios/i.test(ua) && !/edg\/|opr\/|brave/i.test(ua);
+}
 
 // ── Show install banner (Android/Chrome) ─────────────────────────
 function showInstallBanner() {
@@ -4376,15 +4380,7 @@ function closeIosModal(e) {
   sessionStorage.setItem('bkpos_install_dismissed', '1');
 }
 
-// ── Android/Chrome: capture prompt ───────────────────────────────
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  _deferredInstallPrompt = e;
-  // Hide old header button, use the banner instead
-  const btn = document.getElementById('pwaInstallBtn');
-  if (btn) btn.style.display = 'none';
-  showInstallBanner();
-});
+// ── Android/Chrome: hide header install btn when banner is shown ──
 
 window.addEventListener('appinstalled', () => {
   _deferredInstallPrompt = null;
@@ -4410,20 +4406,25 @@ function triggerInstall() {
 
 // ── On load: decide what to show ────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  if (isInStandaloneMode()) return; // already installed
+  if (isInStandaloneMode()) return; // already installed — running as PWA
   if (sessionStorage.getItem('bkpos_install_dismissed')) return;
   if (isIosSafari()) {
     setTimeout(showIosModal, 1200);
-  } else {
-    // Fallback: if beforeinstallprompt already fired before our listener
-    // attached (can happen on page reload), show banner after short delay
-    // if _deferredInstallPrompt was captured
-    setTimeout(() => {
-      if (_deferredInstallPrompt && !isInStandaloneMode()) {
-        showInstallBanner();
-      }
-    }, 800);
+  } else if (isChromeLike()) {
+    // Show banner directly — don't wait for beforeinstallprompt.
+    // beforeinstallprompt only fires over HTTPS; the banner still works
+    // as a manual guide even when the native prompt isn't available.
+    setTimeout(showInstallBanner, 1200);
   }
+});
+
+// If beforeinstallprompt DOES fire (HTTPS hosting), capture it for
+// the native one-tap install via triggerInstall().
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  // Banner may already be visible; if not, show it now
+  showInstallBanner();
 });
 
 // ── Bottom Nav: JS-driven touch drag scroll ───────────────────────
@@ -4657,7 +4658,7 @@ function bnavGo(key, btn) {
 
 
 <!-- ── PWA Install Banner (Android/Chrome) ── -->
-<div id="installBanner">
+<div id="installBanner" class="show">
   <div class="install-banner-icon">
     <img src="file:///C:/Users/WAREHOUSE-PC/Downloads/icons/icon-192.png" alt="App Icon">
   </div>
