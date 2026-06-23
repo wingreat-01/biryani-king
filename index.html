@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_173.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_174.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -690,7 +690,7 @@
     display: none;
     position: fixed; inset: 0;
     background: rgba(0,0,0,0.5);
-    z-index: 40;
+    z-index: 56;
   }
 
   /* ─── Mobile View Cart bar (hidden on desktop, shown in media query) ─── */
@@ -776,10 +776,10 @@
     .toast { font-size: 15px !important; padding: 12px 24px !important; }
 
     html, body { overflow: auto; height: auto; }
-    /* Mobile: header fixed, entire content area scrolls as one column */
+    /* Mobile: header sits below the fixed top nav */
     header {
       position: sticky;
-      top: 0;
+      top: calc(62px + env(safe-area-inset-top, 0px));
       z-index: 40;
     }
     .app {
@@ -789,7 +789,7 @@
       overflow-y: auto;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
-      padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     }
     .menu-panel {
       overflow: visible;
@@ -811,7 +811,7 @@
       border-left: none;
       border-top: none;
       border-radius: 16px 16px 0 0;
-      z-index: 50;
+      z-index: 60;
       transform: translateY(100%);
       transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
       display: flex;
@@ -886,14 +886,14 @@
     .products-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
 
     /* Bottom padding so content isn't hidden behind fixed bars */
-    .app { padding-bottom: 80px; }
+    .app { padding-top: calc(62px + env(safe-area-inset-top, 0px)); padding-bottom: 80px; }
 
     /* ── Mobile bottom "View Cart" bar ── */
     .mobile-cart-bar {
       display: flex;
       position: fixed;
       bottom: 0; left: 0; right: 0;
-      z-index: 45;
+      z-index: 55;
       align-items: center;
       background: var(--surface);
       border-top: 2px solid var(--accent);
@@ -961,14 +961,14 @@
     .bottom-nav {
       display: flex;
       position: fixed;
-      bottom: 0; left: 0; right: 0;
-      height: calc(62px + env(safe-area-inset-bottom, 0px));
-      padding-bottom: env(safe-area-inset-bottom, 0px);
+      top: 0; left: 0; right: 0;
+      height: calc(62px + env(safe-area-inset-top, 0px));
+      padding-top: env(safe-area-inset-top, 0px);
       background: var(--surface);
-      border-top: 1.5px solid var(--border);
+      border-bottom: 1.5px solid var(--border);
       z-index: 50;
       align-items: stretch;
-      box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
       transform: translateY(0);
       transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
       /* Horizontal scroll */
@@ -982,7 +982,7 @@
       will-change: scroll-position;
     }
     .bottom-nav::-webkit-scrollbar { display: none; } /* Chrome/Safari */
-    .bottom-nav.hidden { transform: translateY(110%); }
+    .bottom-nav.hidden { transform: translateY(-110%); }
 
     .bottom-nav-btn {
       flex: 0 0 25vw;               /* exactly 4 visible at a time, rest slide */
@@ -2036,7 +2036,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">08:34:21 AM</span>
+      <span class="time-display" id="timeDisplay">01:38:44 PM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
