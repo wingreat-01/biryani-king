@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_187.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_188.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -54,6 +54,10 @@
     animation: slideUpBanner 0.4s cubic-bezier(0.32,0.72,0,1);
   }
   #installBanner.show { display: flex; }
+  /* Never show install banner when running as installed PWA */
+  @media (display-mode: standalone) {
+    #installBanner { display: none !important; }
+  }
   @keyframes slideUpBanner {
     from { transform: translateY(100%); opacity: 0; }
     to   { transform: translateY(0);   opacity: 1; }
@@ -2127,7 +2131,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">05:27:53 PM</span>
+      <span class="time-display" id="timeDisplay">05:33:14 PM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
@@ -4351,6 +4355,16 @@ function isInStandaloneMode() {
   return navigator.standalone === true ||
          window.matchMedia('(display-mode: standalone)').matches;
 }
+// Hide install banner immediately if already running as PWA
+(function() {
+  if (navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches) {
+    document.addEventListener('DOMContentLoaded', function() {
+      var b = document.getElementById('installBanner');
+      if (b) b.style.display = 'none';
+    });
+  }
+})();
 function isChromeLike() {
   const ua = navigator.userAgent;
   return /chrome|chromium|crios/i.test(ua) && !/edg\/|opr\/|brave/i.test(ua);
