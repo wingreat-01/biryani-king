@@ -3,7 +3,7 @@
 //  Provides offline caching & install-ability
 // ═══════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'bk-pos-v10';
+const CACHE_NAME = 'bk-pos-v11';
 
 // Files to cache for full offline use
 const SHELL_ASSETS = [
