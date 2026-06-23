@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_183.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_184.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -2127,7 +2127,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">04:47:33 PM</span>
+      <span class="time-display" id="timeDisplay">04:55:47 PM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
@@ -4391,46 +4391,32 @@ window.addEventListener('appinstalled', () => {
 });
 
 function triggerInstall() {
+  dismissInstallBanner();
   if (_deferredInstallPrompt) {
-    // Native prompt available — trigger it directly
-    dismissInstallBanner();
+    // Native one-tap install — use it
     _deferredInstallPrompt.prompt();
-    _deferredInstallPrompt.userChoice.then(() => {
-      _deferredInstallPrompt = null;
-    });
+    _deferredInstallPrompt.userChoice.then(() => { _deferredInstallPrompt = null; });
   } else if (isIosSafari()) {
     showIosModal();
   } else {
-    // beforeinstallprompt hasn't fired yet — wait up to 4s for it,
-    // then fall back to manual Chrome instructions
-    dismissInstallBanner();
-    const waitMs = 4000;
-    const started = Date.now();
-    function tryPrompt() {
-      if (_deferredInstallPrompt) {
-        _deferredInstallPrompt.prompt();
-        _deferredInstallPrompt.userChoice.then(() => { _deferredInstallPrompt = null; });
-      } else if (Date.now() - started < waitMs) {
-        setTimeout(tryPrompt, 200);
-      } else {
-        // Fallback: show manual install steps toast/modal
-        showManualInstallGuide();
-      }
-    }
-    setTimeout(tryPrompt, 200);
+    // No native prompt available — show manual guide
+    showManualInstallGuide();
   }
 }
 
+function closeManualInstallGuide() {
+  const m = document.getElementById('chromeInstallModal');
+  if (m) m.style.display = 'none';
+}
 function showManualInstallGuide() {
-  // Reuse the iOS modal structure but with Chrome instructions
   const existing = document.getElementById('chromeInstallModal');
-  if (existing) { existing.classList.add('show'); return; }
+  if (existing) { existing.style.display = 'flex'; return; }
 
   const modal = document.createElement('div');
   modal.id = 'chromeInstallModal';
   modal.style.cssText = `
     position:fixed;inset:0;z-index:9999;
-    background:rgba(0,0,0,0.7);
+    background:rgba(0,0,0,0.75);
     display:flex;align-items:flex-end;justify-content:center;
   `;
   modal.innerHTML = `
@@ -4448,7 +4434,7 @@ function showManualInstallGuide() {
       <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:24px;">
         <div style="display:flex;gap:12px;align-items:flex-start;">
           <div style="min-width:28px;height:28px;border-radius:50%;background:#c8863a;color:#111;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;">1</div>
-          <div style="color:#d4b896;font-size:14px;padding-top:4px;">Tap the <strong style="color:#fff;">⋮ menu</strong> (three dots) in the top-right corner of Chrome</div>
+          <div style="color:#d4b896;font-size:14px;padding-top:4px;">Tap the <strong style="color:#fff;">&#8942; menu</strong> (three dots) in the top-right corner of Chrome</div>
         </div>
         <div style="display:flex;gap:12px;align-items:flex-start;">
           <div style="min-width:28px;height:28px;border-radius:50%;background:#c8863a;color:#111;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;">2</div>
@@ -4456,10 +4442,10 @@ function showManualInstallGuide() {
         </div>
         <div style="display:flex;gap:12px;align-items:flex-start;">
           <div style="min-width:28px;height:28px;border-radius:50%;background:#c8863a;color:#111;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;">3</div>
-          <div style="color:#d4b896;font-size:14px;padding-top:4px;">Tap <strong style="color:#fff;">"Install"</strong> — done! 🎉</div>
+          <div style="color:#d4b896;font-size:14px;padding-top:4px;">Tap <strong style="color:#fff;">"Install"</strong> to confirm &#127881;</div>
         </div>
       </div>
-      <button onclick="document.getElementById('chromeInstallModal').classList.remove('show')"
+      <button onclick="closeManualInstallGuide()"
         style="width:100%;padding:14px;border-radius:12px;border:none;
         background:#c8863a;color:#111;font-size:15px;font-weight:800;
         font-family:'Nunito',sans-serif;cursor:pointer;">
@@ -4467,11 +4453,8 @@ function showManualInstallGuide() {
       </button>
     </div>
   `;
-  modal.addEventListener('click', e => {
-    if (e.target === modal) modal.classList.remove('show');
-  });
+  modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
   document.body.appendChild(modal);
-  modal.classList.add('show');
 }
 
 // ── On load: decide what to show ────────────────────────────────
@@ -4493,7 +4476,9 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   _deferredInstallPrompt = e;
-  // Banner may already be visible; if not, show it now
+  // Update Install button to signal native prompt is ready
+  const btn = document.querySelector('.install-banner-btn');
+  if (btn) btn.textContent = '⬇ Install';
   showInstallBanner();
 });
 
