@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_196.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_197.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -2131,7 +2131,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">10:25:04 AM</span>
+      <span class="time-display" id="timeDisplay">10:44:10 AM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
@@ -3665,20 +3665,22 @@ function renderQuickAmounts(total) {
   // 1. Exact total
   candidates.push({ amount: ceil, label: `₱${ceil.toLocaleString('en-PH')}`, isExact: true });
 
-  // 2. Next round-100 amount above total (e.g. ₱550 → ₱600, ₱300 → skip if same as exact)
+  // 2. Next ₱100 boundary — always a valid real-bill combo (e.g. ₱2310 → ₱2400 = 2x₱1000 + 4x₱100)
   const next100 = Math.ceil(ceil / 100) * 100;
   if (next100 > ceil) {
     candidates.push({ amount: next100, label: `₱${next100.toLocaleString('en-PH')}` });
   }
 
-  // 3. ₱500 if total is below it
-  if (ceil < 500) {
-    candidates.push({ amount: 500, label: '₱500' });
+  // 3. Next ₱500 boundary (e.g. ₱2310 → ₱2500)
+  const next500 = Math.ceil(ceil / 500) * 500;
+  if (next500 > ceil && next500 !== next100) {
+    candidates.push({ amount: next500, label: `₱${next500.toLocaleString('en-PH')}` });
   }
 
-  // 4. ₱1,000 — always useful as a single bill
-  if (ceil < 1000) {
-    candidates.push({ amount: 1000, label: '₱1,000' });
+  // 4. Next ₱1,000 boundary (e.g. ₱2310 → ₱3000)
+  const next1000 = Math.ceil(ceil / 1000) * 1000;
+  if (next1000 > ceil && next1000 !== next500) {
+    candidates.push({ amount: next1000, label: `₱${next1000.toLocaleString('en-PH')}` });
   }
 
   // Deduplicate & limit to 4 buttons
