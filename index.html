@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_197.html -->
+<!-- saved from url=(0054)file:///C:/Users/WAREHOUSE-PC/Downloads/index_198.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -2131,7 +2131,7 @@
       <button id="pwaInstallBtn" onclick="triggerInstall()" title="Install App">
         ⬇️ Install
       </button>
-      <span class="time-display" id="timeDisplay">10:44:10 AM</span>
+      <span class="time-display" id="timeDisplay">10:56:44 AM</span>
       <div class="user-badge" id="userBadge">
         <span class="user-badge-dot"></span>
         <span class="user-badge-name" id="userBadgeName">—</span>
@@ -3879,9 +3879,23 @@ function renderTransactionHistory() {
   const list  = document.getElementById('txnList');
   const badge = document.getElementById('txnCountBadge');
 
-  // Merge session + sheet rows, de-dupe by orderNum, then sort newest-first by orderNum.
+  // Today's date for filtering sheet transactions (which include all historical data)
+  const todayISO   = new Date().toISOString().slice(0, 10);          // "2026-06-25"
+  const todayShort = new Date().toLocaleDateString('en-PH');          // "6/25/2026"
+
+  function isToday(timeField) {
+    if (!timeField) return false;
+    // Session txns only store "10:52 AM" — no date, always today
+    if (/^\d{1,2}:\d{2}/.test(timeField)) return true;
+    // Sheet txns store full timestamp — check for today's date
+    return timeField.includes(todayISO) || timeField.includes(todayShort);
+  }
+
+  // Merge session + sheet rows, de-dupe by orderNum, filter to TODAY only, sort newest-first.
   const sessionOrderNums = new Set(transactions.map(t => String(t.orderNum)));
-  const filteredSheet    = sheetTransactions.filter(t => !sessionOrderNums.has(String(t.orderNum)));
+  const filteredSheet    = sheetTransactions.filter(t =>
+    !sessionOrderNums.has(String(t.orderNum)) && isToday(t.time)
+  );
   combinedTxns = [...transactions, ...filteredSheet]
     .sort((a, b) => Number(b.orderNum) - Number(a.orderNum));
 
